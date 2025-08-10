@@ -1,0 +1,6 @@
+curl -X POST -H "Authorization: Bearer f9WVDUqFSUH6JOW40UyJubjCkGEJQxCGvce3Qs8A" \
+"https://api.smsapi.com/sms.do?\
+from=KPJ.PL&\
+to=48501332990&\
+message=Test SMS API - Windykator&\
+format=json" 

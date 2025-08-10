@@ -146,7 +146,16 @@ class UIComponents:
                                   borderwidth=0,
                                   font=('Arial', 10, 'bold'),
                                   cursor='hand2')
-        edit_item_btn.pack(side=tk.LEFT)
+        edit_item_btn.pack(side=tk.LEFT, padx=(0, 10))
+        
+        remove_settled_btn = tk.Button(preview_buttons_frame, text="🗑️ Usuń rozliczone", 
+                                       bg=self.config.warning_color,
+                                       fg=self.config.white_color,
+                                       relief='flat',
+                                       borderwidth=0,
+                                       font=('Arial', 10, 'bold'),
+                                       cursor='hand2')
+        remove_settled_btn.pack(side=tk.LEFT)
         
         # Treeview z podglądem
         preview_tree_frame = ttk.Frame(preview_frame)
@@ -178,6 +187,7 @@ class UIComponents:
             'add_item_btn': add_item_btn,
             'remove_item_btn': remove_item_btn,
             'edit_item_btn': edit_item_btn,
+            'remove_settled_btn': remove_settled_btn,
             'mapping_fields': mapping_fields,
             'preview_tree': preview_tree,
             'preview_info': preview_info,

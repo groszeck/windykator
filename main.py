@@ -220,6 +220,7 @@ class WindykatorApp:
         self.data_mapping_widgets['add_item_btn'].config(command=self.add_preview_item)
         self.data_mapping_widgets['remove_item_btn'].config(command=self.remove_selected_preview_item)
         self.data_mapping_widgets['edit_item_btn'].config(command=self.edit_preview_item)
+        self.data_mapping_widgets['remove_settled_btn'].config(command=self.remove_settled_items)
         
         # Przyciski szablonów
         self.templates_widgets['save_email_btn'].config(command=lambda: self.save_template('email'))
@@ -377,6 +378,8 @@ class WindykatorApp:
             messagebox.showwarning("Ostrzeżenie", "Najpierw wczytaj plik Excel/CSV")
             return
         
+        print(f"🔄 Generuję podgląd dla {len(self.data_processor.excel_data)} wierszy...")
+        
         # Przygotuj mapowanie kolumn
         mapping = {}
         for field, combo in self.data_mapping_widgets['mapping_fields'].items():
@@ -401,15 +404,40 @@ class WindykatorApp:
             return
         
         # Wyczyść poprzedni podgląd
+        print("🧹 Czyszczę poprzedni podgląd...")
+        old_items = len(self.data_mapping_widgets['preview_tree'].get_children())
+        print(f"🧹 Stary podgląd zawierał: {old_items} pozycji")
+        
         for item in self.data_mapping_widgets['preview_tree'].get_children():
             self.data_mapping_widgets['preview_tree'].delete(item)
         
+        print("🧹 Wyczyszczono poprzedni podgląd")
+        
         # Dodaj wiersze do podglądu
+        print("📊 Pobieram dane do podglądu...")
         preview_data = self.data_processor.get_preview_data()
-        for values, index in preview_data:
-            self.data_mapping_widgets['preview_tree'].insert('', 'end', values=values, tags=(index,))
+        print(f"📊 Pobrano {len(preview_data)} wierszy do podglądu")
+        
+        print("📝 Dodaję wiersze do Treeview...")
+        for i, row_data in enumerate(preview_data):
+            # Przygotuj wartości w odpowiedniej kolejności
+            values = (
+                row_data.get('kontrahent', ''),
+                row_data.get('nip', ''),
+                row_data.get('nr_faktury', ''),
+                row_data.get('email', ''),
+                row_data.get('telefon', ''),
+                row_data.get('kwota', ''),
+                row_data.get('dni_po_terminie', '')
+            )
+            self.data_mapping_widgets['preview_tree'].insert('', 'end', values=values, tags=(i,))
+        
+        new_items = len(self.data_mapping_widgets['preview_tree'].get_children())
+        print(f"✅ Dodano {len(preview_data)} wierszy do podglądu")
+        print(f"✅ Treeview zawiera teraz: {new_items} pozycji")
         
         # Aktualizuj informację o liczbie pozycji
+        print("ℹ️ Aktualizuję informację o liczbie pozycji...")
         self.update_preview_info()
         
         messagebox.showinfo("Sukces", f"Wygenerowano podgląd: {len(preview_data)} pozycji")
@@ -1773,6 +1801,42 @@ class WindykatorApp:
             print("✅ Podgląd HTML został otwarty")
         except Exception as e:
             print(f"Błąd otwierania podglądu HTML: {e}")
+    
+    def remove_settled_items(self):
+        """Usuwa pozycje rozliczone (z kwotą ≤ 0) i odświeża podgląd"""
+        if self.data_processor.excel_data is None:
+            messagebox.showwarning("Ostrzeżenie", "Najpierw wczytaj plik Excel/CSV")
+            return
+        
+        print(f"🔍 Przed usunięciem: {len(self.data_processor.excel_data)} pozycji")
+        
+        # Sprawdź aktualny stan podglądu
+        current_preview_items = len(self.data_mapping_widgets['preview_tree'].get_children())
+        print(f"🔍 Aktualny podgląd zawiera: {current_preview_items} pozycji")
+        
+        # Usuń pozycje rozliczone
+        removed_count = self.data_processor.remove_settled_items()
+        
+        print(f"🗑️ Usunięto: {removed_count} pozycji")
+        print(f"📊 Po usunięciu: {len(self.data_processor.excel_data)} pozycji")
+        
+        if removed_count > 0:
+            # Odśwież podgląd
+            print("🔄 Odświeżam podgląd...")
+            self.generate_preview()
+            
+            # Sprawdź nowy stan podglądu
+            new_preview_items = len(self.data_mapping_widgets['preview_tree'].get_children())
+            print(f"🔍 Nowy podgląd zawiera: {new_preview_items} pozycji")
+            
+            if new_preview_items == len(self.data_processor.excel_data):
+                print("✅ Podgląd został poprawnie odświeżony")
+            else:
+                print(f"❌ Błąd: podgląd {new_preview_items} vs dane {len(self.data_processor.excel_data)}")
+            
+            messagebox.showinfo("Sukces", f"Usunięto {removed_count} pozycji rozliczonych")
+        else:
+            messagebox.showinfo("Informacja", "Nie znaleziono pozycji rozliczonych do usunięcia")
     
     def run(self):
         """Uruchamia aplikację"""

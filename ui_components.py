@@ -443,6 +443,7 @@ class UIComponents:
         # Checkboxy
         email_var = tk.BooleanVar(value=True)
         sms_var = tk.BooleanVar(value=True)
+        test_mode_var = tk.BooleanVar(value=False)
         
         email_check = ttk.Checkbutton(control_frame, text="📧 Email", 
                                       variable=email_var)
@@ -451,6 +452,14 @@ class UIComponents:
         sms_check = ttk.Checkbutton(control_frame, text="📱 SMS", 
                                     variable=sms_var)
         sms_check.pack(side=tk.LEFT)
+        
+        # Separator
+        ttk.Separator(control_frame, orient='vertical').pack(side=tk.LEFT, padx=10, fill=tk.Y)
+        
+        # Checkbox trybu testowego
+        test_mode_check = ttk.Checkbutton(control_frame, text="🧪 Tryb testowej wysyłki", 
+                                         variable=test_mode_var)
+        test_mode_check.pack(side=tk.LEFT)
         
         # Przyciski kontroli
         buttons_frame = ttk.Frame(control_frame)
@@ -502,6 +511,7 @@ class UIComponents:
         return {
             'email_var': email_var,
             'sms_var': sms_var,
+            'test_mode_var': test_mode_var,
             'send_btn': send_btn,
             'export_btn': export_btn,
             'status_tree': status_tree

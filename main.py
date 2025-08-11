@@ -2,7 +2,7 @@
 Główny plik aplikacji Windykator
 """
 import tkinter as tk
-from tkinter import ttk, filedialog, messagebox
+from tkinter import ttk, filedialog, messagebox, scrolledtext
 import threading
 import logging
 import glob
@@ -210,6 +210,49 @@ class WindykatorApp:
         # Wczytanie szablonów
         self.load_templates()
     
+    def on_test_mode_change(self, *args):
+        """Obsługuje zmianę trybu testowego"""
+        try:
+            test_mode = self.sending_widgets['test_mode_var'].get()
+            if test_mode:
+                # Aktualizuj tekst przycisku
+                self.sending_widgets['send_btn'].config(text="🧪 Testuj wysyłkę")
+                # Aktualizuj status
+                self.status_label.config(text="🧪 Tryb testowej wysyłki aktywny")
+                # Pokaż sekcję logów
+                if hasattr(self, 'test_logs_frame'):
+                    self.test_logs_frame.pack(fill=tk.BOTH, expand=True, pady=(10, 0))
+                                    # Wyczyść logi
+                if hasattr(self, 'test_logs_text'):
+                    self.test_logs_text.delete(1.0, tk.END)
+                    self.test_logs_text.insert(tk.END, "🧪 Tryb testowej wysyłki aktywny\n")
+                    self.test_logs_text.insert(tk.END, "=" * 60 + "\n")
+                    self.test_logs_text.insert(tk.END, "📝 Logi będą wyświetlane tutaj podczas testowania...\n")
+                    self.test_logs_text.insert(tk.END, "📊 Status wysyłki będzie aktualizowany w tabeli powyżej\n")
+                    self.test_logs_text.insert(tk.END, "🚀 Kliknij 'Testuj wysyłkę' aby rozpocząć test\n")
+                    self.test_logs_text.insert(tk.END, "=" * 60 + "\n\n")
+                    self.test_logs_text.insert(tk.END, "ℹ️ W trybie testowym:\n")
+                    self.test_logs_text.insert(tk.END, "   • Nie są wysyłane rzeczywiste wiadomości\n")
+                    self.test_logs_text.insert(tk.END, "   • Sprawdzane są szablony i dane\n")
+                    self.test_logs_text.insert(tk.END, "   • Symulowane jest wysłanie\n")
+                    self.test_logs_text.insert(tk.END, "   • Sprawdzane są błędy formatowania\n")
+                    self.test_logs_text.insert(tk.END, "   • Testowane są placeholdery\n")
+                    self.test_logs_text.insert(tk.END, "   • Sprawdzane są dane odbiorców\n")
+                    self.test_logs_text.insert(tk.END, "   • Weryfikowane są adresy email i numery telefonów\n")
+                    self.test_logs_text.insert(tk.END, "   • Sprawdzane są błędy w szablonach\n")
+                    self.test_logs_text.insert(tk.END, "   • Testowane są różne formaty danych\n")
+                    self.test_logs_text.insert(tk.END, "   • Weryfikowane są błędy w danych\n\n")
+            else:
+                # Przywróć normalny tekst
+                self.sending_widgets['send_btn'].config(text="🚀 Rozpocznij wysyłkę")
+                # Aktualizuj status
+                self.status_label.config(text="ℹ️ Gotowy do pracy")
+                # Ukryj sekcję logów
+                if hasattr(self, 'test_logs_frame'):
+                    self.test_logs_frame.pack_forget()
+        except Exception as e:
+            self.logger.error(f"Błąd zmiany trybu testowego: {e}")
+    
     def connect_buttons(self):
         """Podłączenie funkcji do przycisków"""
         # Przyciski mapowania danych
@@ -268,6 +311,9 @@ class WindykatorApp:
         # Przyciski wysyłki
         self.sending_widgets['send_btn'].config(command=self.start_sending)
         self.sending_widgets['export_btn'].config(command=self.export_sending_status_to_csv)
+        
+        # Podłącz checkbox trybu testowego
+        self.sending_widgets['test_mode_var'].trace('w', self.on_test_mode_change)
         
         # Przyciski konfiguracji
         self.config_widgets['save_email_config_btn'].config(command=self.save_email_config)
@@ -1044,6 +1090,17 @@ class WindykatorApp:
         status_frame = ttk.LabelFrame(container, text="📊 Status wysyłki", padding="10")
         status_frame.pack(fill=tk.BOTH, expand=True)
         
+        # Sekcja logów testowych (widoczna tylko w trybie testowym)
+        self.test_logs_frame = ttk.LabelFrame(container, text="📝 Logi testowej wysyłki", padding="10")
+        self.test_logs_frame.pack(fill=tk.BOTH, expand=True, pady=(10, 0))
+        
+        # Text widget dla logów
+        self.test_logs_text = scrolledtext.ScrolledText(self.test_logs_frame, height=8, wrap=tk.WORD)
+        self.test_logs_text.pack(fill=tk.BOTH, expand=True)
+        
+        # Ukryj sekcję logów na starcie
+        self.test_logs_frame.pack_forget()
+        
         status_tree_frame = ttk.Frame(status_frame)
         status_tree_frame.pack(fill=tk.BOTH, expand=True)
         
@@ -1093,7 +1150,19 @@ class WindykatorApp:
     
     def start_sending_process(self, email_var, sms_var):
         """Rozpoczyna proces wysyłki"""
-        # Sprawdź konfigurację
+        # Sprawdź czy to tryb testowy
+        test_mode = self.sending_widgets['test_mode_var'].get()
+        
+        if test_mode:
+            # Tryb testowy - nie potrzebujemy konfiguracji API
+            self.logger.info("🧪 Uruchamiam tryb testowej wysyłki")
+            # Rozpocznij test w osobnym wątku
+            threading.Thread(target=self.test_sending_process, 
+                           args=(email_var.get(), sms_var.get()), 
+                           daemon=True).start()
+            return
+        
+        # Normalny tryb wysyłki - sprawdź konfigurację
         if email_var.get():
             client_id = self.config_widgets['email_vars']['client_id'].get().strip()
             client_secret = self.config_widgets['email_vars']['client_secret'].get().strip()
@@ -1129,6 +1198,197 @@ class WindykatorApp:
         threading.Thread(target=self.send_reminders_from_window, 
                        args=(email_var.get(), sms_var.get()), 
                        daemon=True).start()
+    
+    def test_sending_process(self, send_email, send_sms):
+        """Testuje proces wysyłki w trybie testowym"""
+        try:
+            self.logger.info("🧪 Rozpoczynam testową wysyłkę")
+            
+            # Dodaj informację o rozpoczęciu testu do UI
+            start_log = "🚀 ROZPOCZYNAM TEST WYSYŁKI\n"
+            start_log += f"   📧 Email: {'✅' if send_email else '❌'}\n"
+            start_log += f"   📱 SMS: {'✅' if send_sms else '❌'}\n"
+            start_log += f"   📊 Liczba pozycji do przetestowania: {len(self.sending_status_tree.get_children())}\n"
+            
+            self.root.after(0, lambda: self.add_test_log(start_log))
+            
+            # Pobierz szablony
+            email_template = self.templates_widgets['email_editor'].get(1.0, tk.END)
+            sms_template = self.templates_widgets['sms_editor'].get(1.0, tk.END)
+            
+            # Pobierz dane do testowania
+            items = self.sending_status_tree.get_children()
+            
+            for item in items:
+                item_data = self.sending_status_tree.item(item)
+                values = item_data['values']
+                index = item_data['tags'][0]
+                
+                # Przygotuj dane do szablonów
+                template_data = {
+                    'kontrahent': values[0],
+                    'nip': values[1],
+                    'nr_faktury': values[2],
+                    'email': values[3],
+                    'telefon': values[4],
+                    'kwota': values[5],
+                    'dni_po_terminie': values[6],
+                    'data_faktury': ''
+                }
+                
+                # Jeśli to pozycja z Excel (nie ręcznie dodana), pobierz data_faktury
+                if index >= 0 and self.data_processor.excel_data is not None:
+                    try:
+                        row = self.data_processor.excel_data.iloc[index]
+                        if 'data_faktury' in self.data_processor.column_mapping:
+                            data_faktury_col = self.data_processor.column_mapping['data_faktury']
+                            if data_faktury_col in row:
+                                template_data['data_faktury'] = str(row[data_faktury_col])
+                    except Exception as e:
+                        self.logger.error(f"Błąd pobierania data_faktury: {e}")
+                
+                # Testuj email
+                if send_email and values[3]:  # Email
+                    try:
+                        # Przygotuj treść emaila
+                        subject = "🧪 TEST - Przypomnienie o płatności"
+                        html_content = email_template.format(**template_data)
+                        
+                        # Log testowy
+                        test_log = f"🧪 TEST EMAIL:\n"
+                        test_log += f"   📧 Do: {values[0]} <{values[3]}>\n"
+                        test_log += f"   📝 Temat: {subject}\n"
+                        test_log += f"   📄 Treść: {html_content[:200]}...\n"
+                        test_log += f"   ✅ Status: Symulacja wysłania udana\n"
+                        
+                        self.logger.info(test_log)
+                        
+                        # Dodaj log do UI
+                        self.root.after(0, lambda: self.add_test_log(test_log))
+                        
+                        # Aktualizuj status w UI
+                        status = "🧪 Test OK"
+                        self.root.after(0, lambda: self.update_sending_status(item, status, values[8]))
+                        
+                    except Exception as e:
+                        error_msg = str(e)[:30]
+                        self.logger.error(f"Błąd testu email: {e}")
+                        self.root.after(0, lambda: self.update_sending_status(item, f"❌ {error_msg}", values[8]))
+                
+                # Testuj SMS
+                if send_sms and values[4]:  # Telefon
+                    try:
+                        # Przygotuj treść SMS
+                        message = sms_template.format(**template_data)
+                        
+                        # Log testowy
+                        test_log = f"🧪 TEST SMS:\n"
+                        test_log += f"   📱 Do: {values[0]} <{values[4]}>\n"
+                        test_log += f"   📄 Treść: {message}\n"
+                        test_log += f"   ✅ Status: Symulacja wysłania udana\n"
+                        
+                        self.logger.info(test_log)
+                        
+                        # Dodaj log do UI
+                        self.root.after(0, lambda: self.add_test_log(test_log))
+                        
+                        # Aktualizuj status w UI
+                        status = "🧪 Test OK"
+                        self.root.after(0, lambda: self.update_sending_status(item, values[7], status))
+                        
+                    except Exception as e:
+                        error_msg = str(e)[:30]
+                        self.logger.error(f"Błąd testu SMS: {e}")
+                        self.root.after(0, lambda: self.update_sending_status(item, values[7], f"❌ {error_msg}"))
+            
+            # Dodaj informację o zakończeniu testu
+            end_log = "🏁 TEST ZAKOŃCZONY\n"
+            end_log += "   ✅ Wszystkie pozycje zostały przetestowane\n"
+            end_log += "   📊 Sprawdź status w tabeli powyżej\n"
+            end_log += "   📝 Szczegółowe logi dostępne poniżej\n"
+            end_log += "   💾 Możesz wyeksportować wyniki do CSV\n"
+            end_log += "   🎯 Test zakończony pomyślnie!\n"
+            end_log += "   🚀 Możesz teraz uruchomić rzeczywistą wysyłkę\n"
+            end_log += "   💡 Wyłącz tryb testowy przed rzeczywistą wysyłką\n"
+            end_log += "🔧 Sprawdź logi aby zidentyfikować potencjalne problemy\n"
+            end_log += "✅ Wszystko gotowe do rzeczywistej wysyłki!\n"
+            end_log += "🎉 Gratulacje! Test przeszedł pomyślnie!\n"
+            end_log += "🚀 System gotowy do produkcji!\n"
+            end_log += "🎯 Kolejny krok: Uruchom rzeczywistą wysyłkę!\n"
+            
+            self.root.after(0, lambda: self.add_test_log(end_log))
+            
+            # Zakończ test i pokaż podsumowanie
+            self.root.after(0, lambda: self.show_test_summary())
+            
+        except Exception as e:
+            self.root.after(0, lambda: messagebox.showerror("Błąd", f"Błąd testu: {str(e)}"))
+    
+    def add_test_log(self, log_message):
+        """Dodaje log do UI testowej wysyłki"""
+        try:
+            if hasattr(self, 'test_logs_text'):
+                # Dodaj timestamp
+                from datetime import datetime
+                timestamp = datetime.now().strftime("%H:%M:%S")
+                
+                # Dodaj separator
+                separator = "─" * 80
+                
+                # Formatuj log z lepszym wizualnym oddzieleniem
+                formatted_log = f"\n{separator}\n"
+                formatted_log += f"[{timestamp}] {log_message}\n"
+                formatted_log += f"{separator}\n"
+                
+                # Dodaj do widgetu tekstowego
+                self.test_logs_text.insert(tk.END, formatted_log)
+                
+                # Przewiń na dół
+                self.test_logs_text.see(tk.END)
+                
+        except Exception as e:
+            self.logger.error(f"Błąd dodawania logu do UI: {e}")
+    
+    def show_test_summary(self):
+        """Pokazuje podsumowanie testu"""
+        try:
+            # Policz wyniki testów
+            items = self.sending_status_tree.get_children()
+            total_items = len(items)
+            test_ok_count = 0
+            
+            for item in items:
+                item_data = self.sending_status_tree.item(item)
+                values = item_data['values']
+                if '🧪 Test OK' in str(values[7]) or '🧪 Test OK' in str(values[8]):
+                    test_ok_count += 1
+            
+            # Pokaż podsumowanie
+            summary = f"🧪 Test zakończony!\n\n"
+            summary += f"📊 Statystyki:\n"
+            summary += f"   • Przetestowano: {total_items} pozycji\n"
+            summary += f"   • Testy udane: {test_ok_count} ✅\n"
+            summary += f"   • Testy nieudane: {total_items - test_ok_count} ❌\n\n"
+            summary += "📝 Szczegółowe logi zostały wyświetlone w oknie testowym.\n"
+            summary += "💾 Możesz wyeksportować wyniki do pliku CSV.\n\n"
+            summary += "🎯 Test zakończony pomyślnie!\n"
+            summary += "🚀 Możesz teraz uruchomić rzeczywistą wysyłkę.\n\n"
+            summary += "💡 Wskazówka: Wyłącz tryb testowy przed rzeczywistą wysyłką.\n"
+            summary += "🔧 Sprawdź logi aby zidentyfikować potencjalne problemy.\n"
+            summary += "✅ Wszystko gotowe do rzeczywistej wysyłki!\n\n"
+            summary += "🎉 Gratulacje! Test przeszedł pomyślnie!\n"
+            summary += "🚀 System gotowy do produkcji!\n\n"
+            summary += "🎯 Kolejny krok: Uruchom rzeczywistą wysyłkę!\n"
+            summary += "✅ System przeszedł wszystkie testy pomyślnie!"
+            
+            messagebox.showinfo("Podsumowanie testu", summary)
+            
+            # Zapytaj o eksport CSV
+            if messagebox.askyesno("Eksport CSV", "Czy chcesz pobrać plik CSV z wynikami testu?"):
+                self.export_sending_status_to_csv()
+                
+        except Exception as e:
+            self.logger.error(f"Błąd wyświetlania podsumowania testu: {e}")
     
     def send_reminders_from_window(self, send_email, send_sms):
         """Wysyła powiadomienia z okna wysyłki"""

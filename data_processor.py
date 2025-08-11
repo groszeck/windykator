@@ -9,8 +9,9 @@ class DataProcessor:
     """Klasa do przetwarzania danych z plików Excel/CSV"""
     
     def __init__(self):
+        """Inicjalizuje DataProcessor"""
         self.excel_data = None
-        self.column_mapping = {}
+        self.column_mapping = {}  # Inicjalizuj mapowanie kolumn
         self.logger = logging.getLogger(__name__)
     
     def load_excel_file(self, file_path):
@@ -50,154 +51,188 @@ class DataProcessor:
                                 self.logger.error(f"Wszystkie próby wczytania Excel nie powiodły się: {e}")
                                 return False
                         
+                # Wyczyść dane po wczytaniu
+                self.clean_data()
+                
+                # Wymuś inteligentne mapowanie kolumn
+                self.force_smart_mapping_for_specific_data()
+                
+                return True
+            
             elif file_path.endswith('.csv'):
                 # CSV - maksymalnie elastyczne wczytywanie
                 # Próbuj różne kombinacje parametrów
                 success = False
                 
-                # Kombinacja 1: Standardowe ustawienia
+                # Próba 1: Standardowe wczytywanie CSV z UTF-8
                 try:
                     self.excel_data = pd.read_csv(
                         file_path, 
-                        encoding='utf-8',
+                        encoding='utf-8', 
+                        sep=';',  # Użyj średnika jako separatora
                         on_bad_lines='skip',
-                        error_bad_lines=False,
                         engine='python'
                     )
                     success = True
-                    self.logger.info("Wczytano CSV z domyślnymi ustawieniami")
+                    self.logger.info("Wczytano CSV z UTF-8 i separatorem ';'")
                 except Exception as e:
-                    self.logger.debug(f"Standardowe ustawienia nie zadziałały: {e}")
+                    self.logger.debug(f"Wczytywanie z UTF-8 i ';' nie zadziałało: {e}")
                 
-                # Kombinacja 2: Różne kodowania
-                if not success:
-                    encodings = ['windows-1250', 'cp1250', 'latin-1', 'iso-8859-2']
-                    for encoding in encodings:
-                        try:
-                            self.excel_data = pd.read_csv(
-                                file_path, 
-                                encoding=encoding,
-                                on_bad_lines='skip',
-                                error_bad_lines=False,
-                                engine='python'
-                            )
-                            success = True
-                            self.logger.info(f"Wczytano CSV z kodowaniem {encoding}")
-                            break
-                        except Exception as e:
-                            self.logger.debug(f"Kodowanie {encoding} nie zadziałało: {e}")
-                
-                # Kombinacja 3: Różne separatory
-                if not success:
-                    separators = [';', '\t', '|', ' ']
-                    for sep in separators:
-                        try:
-                            self.excel_data = pd.read_csv(
-                                file_path, 
-                                encoding='utf-8',
-                                sep=sep,
-                                on_bad_lines='skip',
-                                error_bad_lines=False,
-                                engine='python'
-                            )
-                            success = True
-                            self.logger.info(f"Wczytano CSV z separatorem '{sep}'")
-                            break
-                        except Exception as e:
-                            self.logger.debug(f"Separator '{sep}' nie zadziałał: {e}")
-                
-                # Kombinacja 3b: Średnik z polskim kodowaniem (najczęstszy przypadek)
+                # Próba 2: CSV z Windows-1250 i separatorem ';'
                 if not success:
                     try:
                         self.excel_data = pd.read_csv(
                             file_path, 
-                            encoding='windows-1250',
+                            encoding='windows-1250', 
                             sep=';',
                             on_bad_lines='skip',
-                            error_bad_lines=False,
-                            engine='python',
+                            engine='python'
+                        )
+                        success = True
+                        self.logger.info("Wczytano CSV z Windows-1250 i separatorem ';'")
+                    except Exception as e:
+                        self.logger.debug(f"Wczytywanie z Windows-1250 i ';' nie zadziałało: {e}")
+                
+                # Próba 3: CSV z ISO-8859-2 i separatorem ';'
+                if not success:
+                    try:
+                        self.excel_data = pd.read_csv(
+                            file_path, 
+                            encoding='iso-8859-2', 
+                            sep=';',
+                            on_bad_lines='skip',
+                            engine='python'
+                        )
+                        success = True
+                        self.logger.info("Wczytano CSV z ISO-8859-2 i separatorem ';'")
+                    except Exception as e:
+                        self.logger.debug(f"Wczytywanie z ISO-8859-2 i ';' nie zadziałało: {e}")
+                
+                # Próba 4: CSV z Latin-1 i separatorem ';'
+                if not success:
+                    try:
+                        self.excel_data = pd.read_csv(
+                            file_path, 
+                            encoding='latin-1', 
+                            sep=';',
+                            on_bad_lines='skip',
+                            engine='python'
+                        )
+                        success = True
+                        self.logger.info("Wczytano CSV z Latin-1 i separatorem ';'")
+                    except Exception as e:
+                        self.logger.debug(f"Wczytywanie z Latin-1 i ';' nie zadziałało: {e}")
+                
+                # Próba 5: CSV z ignorowaniem cudzysłowów i separatorem ';'
+                if not success:
+                    try:
+                        self.excel_data = pd.read_csv(
+                            file_path, 
+                            encoding='utf-8', 
+                            sep=';',
                             quotechar=None,  # Ignoruj cudzysłowy
-                            quoting=3  # QUOTE_NONE
+                            quoting=3,  # QUOTE_NONE
+                            on_bad_lines='skip',
+                            engine='python'
                         )
                         success = True
-                        self.logger.info("Wczytano CSV z polskim kodowaniem i separatorem średnika")
+                        self.logger.info("Wczytano CSV z ignorowaniem cudzysłowów i separatorem ';'")
                     except Exception as e:
-                        self.logger.debug(f"Polskie kodowanie ze średnikiem nie zadziałało: {e}")
+                        self.logger.debug(f"Wczytywanie z ignorowaniem cudzysłowów i ';' nie zadziałało: {e}")
                 
-                # Kombinacja 4: Ostatnia szansa - wszystko razem
+                # Próba 6: CSV z automatycznym wykrywaniem kodowania i separatorem ';'
                 if not success:
                     try:
                         self.excel_data = pd.read_csv(
                             file_path, 
-                            encoding='latin-1',
+                            encoding=None,  # Automatyczne wykrywanie
                             sep=';',
                             on_bad_lines='skip',
-                            error_bad_lines=False,
-                            engine='python',
-                            quoting=3  # QUOTE_NONE
+                            engine='python'
                         )
                         success = True
-                        self.logger.info("Wczytano CSV z ostatecznymi ustawieniami")
+                        self.logger.info("Wczytano CSV z automatycznym kodowaniem i separatorem ';'")
                     except Exception as e:
-                        self.logger.debug(f"Ostateczne ustawienia nie zadziałały: {e}")
+                        self.logger.debug(f"Wczytywanie z automatycznym kodowaniem i ';' nie zadziałało: {e}")
                 
-                # Kombinacja 5: Ostateczna próba - wczytaj jako tekst i przetwórz
+                # Próba 7: CSV z różnymi separatorami (fallback)
                 if not success:
                     try:
-                        with open(file_path, 'r', encoding='windows-1250', errors='ignore') as f:
+                        # Spróbuj automatycznie wykryć separator
+                        with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
+                            first_line = f.readline()
+                        
+                        if ';' in first_line:
+                            sep = ';'
+                        elif ',' in first_line:
+                            sep = ','
+                        elif '\t' in first_line:
+                            sep = '\t'
+                        else:
+                            sep = ';'  # Domyślny
+                        
+                        self.excel_data = pd.read_csv(
+                            file_path, 
+                            encoding='utf-8', 
+                            sep=sep,
+                            on_bad_lines='skip',
+                            engine='python'
+                        )
+                        success = True
+                        self.logger.info(f"Wczytano CSV z automatycznym separatorem '{sep}'")
+                    except Exception as e:
+                        self.logger.debug(f"Wczytywanie z automatycznym separatorem nie zadziałało: {e}")
+                
+                # Próba 8: Wczytywanie jako tekst i ręczne parsowanie
+                if not success:
+                    try:
+                        with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
                             lines = f.readlines()
                         
-                        if len(lines) > 0:
-                            # Podziel pierwszy wiersz na kolumny
-                            header = lines[0].strip().split(';')
-                            
-                            # Utwórz DataFrame z wierszami
-                            data_rows = []
+                        # Ręczne parsowanie CSV
+                        if lines:
+                            headers = lines[0].strip().split(';')
+                            data = []
                             for line in lines[1:]:
                                 if line.strip():
-                                    # Usuń cudzysłowy i podziel na kolumny
-                                    clean_line = line.strip().replace('"', '').replace('"', '')
-                                    row_data = clean_line.split(';')
+                                    # Podziel linię na kolumny, ale uwzględnij cudzysłowy
+                                    row_data = []
+                                    current_field = ""
+                                    in_quotes = False
                                     
-                                    # Uzupełnij brakujące kolumny
-                                    while len(row_data) < len(header):
-                                        row_data.append('')
-                                    # Skróć jeśli za dużo kolumn
-                                    row_data = row_data[:len(header)]
-                                    
-                                    # Sprawdź czy kwota nie jest 0 (pomiń wiersze z zerową kwotą)
-                                    try:
-                                        # Szukaj kolumny z kwotą (Netto, Kwota płatności, itp.)
-                                        kwota_kol = None
-                                        for i, col_name in enumerate(header):
-                                            if any(keyword in col_name.lower() for keyword in ['netto', 'kwota', 'wartość', 'brutto']):
-                                                kwota_kol = i
-                                                break
-                                        
-                                        if kwota_kol is not None and kwota_kol < len(row_data):
-                                            kwota_str = str(row_data[kwota_kol]).replace(',', '.').replace(' ', '')
-                                            if kwota_str and kwota_str != '0' and kwota_str != '0.0':
-                                                data_rows.append(row_data)
-                                            else:
-                                                self.logger.debug(f"Pominięto wiersz z zerową kwotą: {row_data[kwota_kol]}")
+                                    for char in line:
+                                        if char == '"':
+                                            in_quotes = not in_quotes
+                                        elif char == ';' and not in_quotes:
+                                            row_data.append(current_field.strip())
+                                            current_field = ""
                                         else:
-                                            # Jeśli nie ma kolumny kwoty, dodaj wiersz
-                                            data_rows.append(row_data)
-                                    except:
-                                        # W przypadku błędu, dodaj wiersz
-                                        data_rows.append(row_data)
+                                            current_field += char
+                                    
+                                    # Dodaj ostatnie pole
+                                    row_data.append(current_field.strip())
+                                    
+                                    # Uzułnij brakujące kolumny
+                                    while len(row_data) < len(headers):
+                                        row_data.append("")
+                                    
+                                    data.append(row_data[:len(headers)])
                             
-                            # Utwórz DataFrame
-                            self.excel_data = pd.DataFrame(data_rows, columns=header)
+                            self.excel_data = pd.DataFrame(data, columns=headers)
                             success = True
-                            self.logger.info(f"Wczytano CSV jako tekst: {len(self.excel_data)} wierszy, {len(header)} kolumn")
+                            self.logger.info("Wczytano CSV ręcznym parsowaniem")
                     except Exception as e:
-                        self.logger.debug(f"Wczytywanie jako tekst nie zadziałało: {e}")
+                        self.logger.debug(f"Ręczne parsowanie nie zadziałało: {e}")
                 
                 if not success:
                     self.logger.error("Wszystkie próby wczytania CSV nie powiodły się")
                     return False
                 
+                # Wyczyść dane po wczytaniu
+                self.clean_data()
+                
+                return True
+            
             else:
                 raise ValueError("Nieobsługiwany format pliku")
             
@@ -211,6 +246,9 @@ class DataProcessor:
             
             # Wyczyść dane - usuń puste wiersze i kolumny
             self.clean_data()
+            
+            # Wymuś inteligentne mapowanie kolumn
+            self.force_smart_mapping_for_specific_data()
             
             # Automatycznie spróbuj zmapować kolumny
             if self.apply_smart_mapping():
@@ -280,6 +318,20 @@ class DataProcessor:
                 if self.excel_data[col].astype(str).str.strip().eq('').all():
                     self.excel_data = self.excel_data.drop(columns=[col])
             
+            # Usuń pozostałe cudzysłowy ze wszystkich kolumn tekstowych
+            for col in self.excel_data.columns:
+                if self.excel_data[col].dtype == 'object':  # Kolumny tekstowe
+                    self.excel_data[col] = self.excel_data[col].astype(str).str.replace('"', '').str.replace('"', '')
+            
+            # Napraw problemy z kodowaniem
+            self.fix_encoding_issues()
+            
+            # Sprawdź i popraw mapowanie kolumn
+            self.check_and_fix_column_mapping()
+            
+            # Dodaj kolumnę z dniami po terminie (po ustawieniu mapowania)
+            self.add_days_overdue_column()
+            
             # Resetuj indeksy po usunięciu wierszy
             self.excel_data = self.excel_data.reset_index(drop=True)
             
@@ -316,14 +368,14 @@ class DataProcessor:
         
         # Słownik mapowań nazw kolumn
         field_mappings = {
-                             'kontrahent': ['kontrahent', 'nazwa', 'nazwa firmy', 'firma', 'klient', 'odbiorca', 'odbiorca płatności', 'kontrahent'],
+            'kontrahent': ['kontrahent', 'nazwa', 'nazwa firmy', 'firma', 'klient', 'odbiorca', 'odbiorca płatności'],
             'nip': ['nip', 'numer nip', 'tax id', 'identyfikator podatkowy'],
             'nr_faktury': ['nr faktury', 'numer faktury', 'faktura', 'nr', 'numer', 'invoice', 'invoice number'],
-                             'email': ['email', 'e-mail', 'adres email', 'mail', 'e-mail adres', 'EMAIL'],
-                             'telefon': ['telefon', 'phone', 'tel', 'numer telefonu', 'phone number', 'telefon komórkowy', 'telefon komorkowy'],
-                             'kwota': ['kwota', 'amount', 'suma', 'wartość', 'kwota brutto', 'brutto', 'netto', 'kwota netto', 'kwota płatności'],
-                 'data_faktury': ['data faktury', 'data', 'data wystawienia', 'data utworzenia', 'date', 'invoice date', 'wystawienia', 'data'],
-                 'nr_faktury': ['nr faktury', 'numer faktury', 'faktura', 'nr', 'numer', 'invoice', 'invoice number', 'numer']
+            'email': ['email', 'e-mail', 'adres email', 'mail', 'e-mail adres', 'EMAIL'],
+            'telefon': ['telefon', 'phone', 'tel', 'numer telefonu', 'phone number', 'telefon komórkowy', 'telefon komorkowy'],
+            'kwota': ['kwota', 'amount', 'suma', 'wartość', 'kwota brutto', 'brutto', 'netto', 'kwota netto', 'kwota płatności'],
+            'data_faktury': ['data faktury', 'data', 'data wystawienia', 'data utworzenia', 'date', 'invoice date', 'wystawienia'],
+            'dni_po_terminie': ['dni po terminie', 'dni po', 'dni', 'termin', 'opóźnienie', 'dni opóźnienia']
         }
         
         # Mapuj każdą kolumnę
@@ -362,14 +414,24 @@ class DataProcessor:
                 suggestions['email'] = col
                 continue
             
-            # Sprawdź czy kolumna zawiera telefony
-            if self.excel_data[col].astype(str).str.match(r'[\d\s\+\-\(\)]+').any():
+            # Sprawdź czy kolumna zawiera telefony (9 cyfr)
+            if self.excel_data[col].astype(str).str.match(r'^\d{9}$').any():
                 suggestions['telefon'] = col
                 continue
             
-            # Sprawdź czy kolumna zawiera kwoty
-            if self.excel_data[col].astype(str).str.match(r'[\d\.,]+').any():
+            # Sprawdź czy kolumna zawiera kwoty (liczby z przecinkami)
+            if self.excel_data[col].astype(str).str.match(r'^\d+[,\.]\d{2}$').any():
                 suggestions['kwota'] = col
+                continue
+            
+            # Sprawdź czy kolumna zawiera daty (format DD.MM.YYYY)
+            if self.excel_data[col].astype(str).str.match(r'^\d{2}\.\d{2}\.\d{4}$').any():
+                suggestions['data_faktury'] = col
+                continue
+            
+            # Sprawdź czy kolumna zawiera numery faktur (format XXX/XX/XXXX)
+            if self.excel_data[col].astype(str).str.match(r'^\d+/\d+/\d{4}$').any():
+                suggestions['nr_faktury'] = col
                 continue
         
         self.logger.info(f"Sugestie mapowania kolumn: {suggestions}")
@@ -442,45 +504,107 @@ class DataProcessor:
         return template_data
     
     def calculate_days_overdue(self, row):
-        """Oblicza dni po terminie na podstawie daty faktury"""
-        if 'data_faktury' not in self.column_mapping:
-            return ""
-        
-        data_faktury_col = self.column_mapping['data_faktury']
-        if data_faktury_col not in row:
-            return ""
+        """Oblicza dni po terminie płatności"""
+        self.logger.info(f"=== WYWOŁANO calculate_days_overdue ===")
+        self.logger.info(f"Typ row: {type(row)}")
+        self.logger.info(f"Zawartość row: {row}")
         
         try:
-            data_faktury_str = str(row[data_faktury_col])
+            # Pobierz datę faktury - sprawdź typ i pobierz odpowiednio
+            if isinstance(row, dict):
+                # Jeśli row to słownik
+                data_faktury = row.get('data_faktury', '')
+                self.logger.info(f"Pobrano datę z dict['data_faktury']: '{data_faktury}'")
+            elif hasattr(row, 'get') and hasattr(row, 'index'):
+                # Jeśli row to pandas.Series, spróbuj pobrać z zmapowanej kolumny
+                if 'data_faktury' in self.column_mapping:
+                    col_name = self.column_mapping['data_faktury']
+                    if col_name in row.index:
+                        data_faktury = row[col_name]
+                        self.logger.info(f"Pobrano datę z pandas.Series[{col_name}]: '{data_faktury}'")
+                    else:
+                        data_faktury = ''
+                        self.logger.info(f"Kolumna {col_name} nie istnieje w pandas.Series")
+                else:
+                    data_faktury = ''
+                    self.logger.info("Brak mapowania dla 'data_faktury'")
+            else:
+                # Nieznany typ
+                data_faktury = ''
+                self.logger.info(f"Nieznany typ row: {type(row)}")
             
-            # Rozszerzone formaty dat
-            date_formats = [
-                '%Y-%m-%d', '%d.%m.%Y', '%Y/%m/%d', '%d/%m/%Y',
-                '%d-%m-%Y', '%Y.%m.%d', '%d/%m/%y', '%y/%m/%d',
-                '%d.%m.%y', '%y.%m.%d', '%d-%m-%y', '%y-%m-%d',
-                '%Y.%m.%d', '%d.%m.%Y', '%Y-%m-%d %H:%M:%S',
-                '%d.%m.%Y %H:%M:%S', '%Y/%m/%d %H:%M:%S'
-            ]
+            if not data_faktury or str(data_faktury).strip() == '' or str(data_faktury).lower() == 'nan':
+                self.logger.info(f"Pusta data faktury: '{data_faktury}'")
+                return 0
             
-            for fmt in date_formats:
-                try:
-                    data_faktury = datetime.strptime(data_faktury_str.strip(), fmt)
-                    return str((datetime.now() - data_faktury).days)
-                except ValueError:
-                    continue
-            
-            # Jeśli żaden format nie zadziałał, spróbuj pandas
+            # Konwertuj datę z formatu DD.MM.YYYY
             try:
-                import pandas as pd
-                data_faktury = pd.to_datetime(data_faktury_str, errors='coerce')
-                if pd.notna(data_faktury):
-                    return str((datetime.now() - data_faktury.to_pydatetime()).days)
-            except:
-                pass
+                from datetime import datetime, timedelta
+                data_obj = datetime.strptime(str(data_faktury).strip(), '%d.%m.%Y')
+                
+                # Dodaj 7 dni (termin płatności zgodnie z wymaganiami użytkownika)
+                termin_platnosci = data_obj + timedelta(days=7)
+                
+                # Oblicz różnicę dni od dzisiaj
+                dzisiaj = datetime.now()
+                roznica = (dzisiaj - termin_platnosci).days
+                
+                # Dodaj debugowanie
+                self.logger.info(f"Data faktury: {data_faktury} -> {data_obj}")
+                self.logger.info(f"Termin płatności: {termin_platnosci}")
+                self.logger.info(f"Dzisiaj: {dzisiaj}")
+                self.logger.info(f"Różnica dni: {roznica}")
+                
+                return max(0, roznica)  # Zwróć 0 jeśli nie minął termin
+                
+            except ValueError:
+                # Jeśli data jest w innym formacie, spróbuj inne formaty
+                try:
+                    data_obj = datetime.strptime(str(data_faktury).strip(), '%Y-%m-%d')
+                    termin_platnosci = data_obj + timedelta(days=7)
+                    dzisiaj = datetime.now()
+                    roznica = (dzisiaj - termin_platnosci).days
+                    return max(0, roznica)
+                except ValueError:
+                    self.logger.debug(f"Nie można sparsować daty: {data_faktury}")
+                    return 0
+                    
+        except Exception as e:
+            self.logger.debug(f"Błąd obliczania dni po terminie: {e}")
+            return 0
+    
+    def add_days_overdue_column(self):
+        """Dodaje kolumnę z dniami po terminie"""
+        if self.excel_data is None:
+            return False
+        
+        try:
+            # Sprawdź czy kolumna już istnieje
+            if 'dni_po_terminie' in self.excel_data.columns:
+                self.logger.info("Kolumna dni_po_terminie już istnieje")
+                return True
             
-            return "Błąd daty"
-        except Exception:
-            return "Błąd daty"
+            # Dodaj kolumnę z dniami po terminie
+            self.excel_data['dni_po_terminie'] = 0
+            self.logger.info(f"Rozpoczynam obliczanie dni po terminie dla {len(self.excel_data)} wierszy")
+            
+            # Oblicz dni po terminie dla każdego wiersza
+            for i in range(len(self.excel_data)):
+                row_data = self.get_row_by_index(i)
+                if row_data is not None:
+                    self.logger.info(f"Przetwarzam wiersz {i}: {row_data.get('Data', 'BRAK DATY') if hasattr(row_data, 'get') else 'pandas.Series'}")
+                    dni = self.calculate_days_overdue(row_data)
+                    self.excel_data.at[i, 'dni_po_terminie'] = dni
+                    self.logger.info(f"Wiersz {i}: dni_po_terminie = {dni}")
+                else:
+                    self.logger.warning(f"Wiersz {i}: row_data jest None")
+            
+            self.logger.info("Dodano kolumnę z dniami po terminie")
+            return True
+            
+        except Exception as e:
+            self.logger.error(f"Błąd podczas dodawania kolumny dni po terminie: {e}")
+            return False
     
     def get_preview_data(self, rows=None):
         """Zwraca dane do podglądu (domyślnie wszystkie wiersze)"""
@@ -649,14 +773,102 @@ class DataProcessor:
         except Exception as e:
             self.logger.error(f"Błąd podczas normalizacji danych: {e}")
     
-    def get_mapping_summary(self):
-        """Zwraca podsumowanie mapowania kolumn"""
-        if not self.column_mapping:
-            return "Brak mapowania kolumn"
+    def diagnose_specific_rows(self, search_terms):
+        """Diagnozuje konkretne wiersze na podstawie nazw firm"""
+        if self.excel_data is None:
+            return {}
         
-        summary = "Mapowanie kolumn:\n"
+        results = {}
+        for term in search_terms:
+            mask = self.excel_data.astype(str).apply(lambda x: x.str.contains(term, case=False, na=False)).any(axis=1)
+            matching_rows = self.excel_data[mask]
+            results[term] = matching_rows.to_dict('records')
+        
+        return results
+    
+    def check_encoding_issues(self):
+        """Sprawdza problemy z kodowaniem w danych"""
+        if self.excel_data is None:
+            return {}
+        
+        issues = {}
+        
+        # Sprawdź kolumny tekstowe pod kątem problemów z kodowaniem
+        for col in self.excel_data.columns:
+            if self.excel_data[col].dtype == 'object':
+                # Sprawdź czy są jakieś dziwne znaki
+                sample_values = self.excel_data[col].dropna().astype(str).head(20)
+                problematic_chars = []
+                
+                for val in sample_values:
+                    # Sprawdź czy są znaki, które mogą wskazywać na problemy z kodowaniem
+                    if any(ord(char) > 127 for char in val):
+                        # Znaki spoza ASCII - mogą być problematyczne
+                        problematic_chars.append(val)
+                
+                if problematic_chars:
+                    issues[col] = {
+                        'sample_problematic': problematic_chars[:5],
+                        'total_problematic': len(problematic_chars)
+                    }
+        
+        return issues
+    
+    def fix_encoding_issues(self):
+        """Naprawia problemy z kodowaniem w danych"""
+        if self.excel_data is None:
+            return False
+        
+        try:
+            fixed = False
+            
+            # Napraw problemy z cudzysłowami i innymi znakami
+            for col in self.excel_data.columns:
+                if self.excel_data[col].dtype == 'object':
+                    # Usuń problematyczne znaki
+                    original_col = self.excel_data[col].copy()
+                    
+                    # Usuń cudzysłowy i inne problematyczne znaki
+                    cleaned_col = self.excel_data[col].astype(str).str.replace('"', '').str.replace('"', '')
+                    cleaned_col = cleaned_col.str.replace('', '')  # Usuń znaki zastępcze
+                    cleaned_col = cleaned_col.str.replace('?', '')  # Usuń znaki zapytania
+                    
+                    # Sprawdź czy coś się zmieniło
+                    if not (original_col == cleaned_col).all():
+                        self.excel_data[col] = cleaned_col
+                        fixed = True
+                        self.logger.info(f"Naprawiono problemy z kodowaniem w kolumnie: {col}")
+            
+            if fixed:
+                self.logger.info("Naprawiono problemy z kodowaniem w danych")
+            else:
+                self.logger.info("Nie znaleziono problemów z kodowaniem do naprawienia")
+            
+            return fixed
+            
+        except Exception as e:
+            self.logger.error(f"Błąd podczas naprawiania problemów z kodowaniem: {e}")
+            return False
+    
+    def get_mapping_summary(self):
+        """Zwraca podsumowanie mapowania kolumn jako słownik"""
+        if not hasattr(self, 'column_mapping') or not self.column_mapping:
+            return {}
+        
+        summary = {}
         for field, col in self.column_mapping.items():
-            summary += f"  {field} -> {col}\n"
+            # Oblicz pokrycie danych dla tej kolumny
+            if self.excel_data is not None and col in self.excel_data.columns:
+                non_empty_count = self.excel_data[col].notna().sum()
+                total_count = len(self.excel_data)
+                coverage = (non_empty_count / total_count) * 100 if total_count > 0 else 0
+            else:
+                coverage = 0
+            
+            summary[field] = {
+                'mapped_to': col,
+                'coverage': coverage
+            }
         
         return summary
     
@@ -734,13 +946,141 @@ class DataProcessor:
         return self.load_excel_file(file_path)
     
     def force_column_mapping(self, field, column_name):
-        """Wymusza mapowanie konkretnej kolumny"""
-        if self.excel_data is not None and column_name in self.excel_data.columns:
-            self.column_mapping[field] = column_name
-            self.logger.info(f"Wymuszone mapowanie: {field} -> {column_name}")
+        """Wymusza mapowanie konkretnego pola na konkretną kolumnę"""
+        if self.excel_data is None or column_name not in self.excel_data.columns:
+            return False
+        
+        if not hasattr(self, 'column_mapping'):
+            self.column_mapping = {}
+        
+        self.column_mapping[field] = column_name
+        self.logger.info(f"Wymuszone mapowanie: {field} -> {column_name}")
+        return True
+    
+    def force_smart_mapping_for_specific_data(self):
+        """Wymusza inteligentne mapowanie na podstawie analizy konkretnych danych"""
+        if self.excel_data is None:
+            return False
+        
+        # Analizuj dane i wymuś mapowanie
+        forced_mapping = {}
+        
+        # Sprawdź każdą kolumnę
+        for col in self.excel_data.columns:
+            col_lower = col.lower()
+            
+            # Kontrahent - kolumna z nazwami firm
+            if 'kontrahent' in col_lower:
+                forced_mapping['kontrahent'] = col
+                continue
+            
+            # NIP - kolumna z 10-cyfrowymi numerami
+            if self.excel_data[col].astype(str).str.match(r'^\d{10}$').any():
+                forced_mapping['nip'] = col
+                continue
+            
+            # Email - kolumna z adresami email
+            if self.excel_data[col].astype(str).str.contains(r'@').any():
+                forced_mapping['email'] = col
+                continue
+            
+            # Telefon - kolumna z 9-cyfrowymi numerami
+            if self.excel_data[col].astype(str).str.match(r'^\d{9}$').any():
+                forced_mapping['telefon'] = col
+                continue
+            
+            # Kwota - kolumna z kwotami (liczby z przecinkami)
+            if self.excel_data[col].astype(str).str.match(r'^\d+[,\.]\d{2}$').any():
+                forced_mapping['kwota'] = col
+                continue
+            
+            # Data - kolumna z datami w formacie DD.MM.YYYY
+            if self.excel_data[col].astype(str).str.match(r'^\d{2}\.\d{2}\.\d{4}$').any():
+                forced_mapping['data_faktury'] = col
+                continue
+            
+            # Numer faktury - kolumna z numerami w formacie XXX/XX/XXXX
+            if self.excel_data[col].astype(str).str.match(r'^\d+/\d+/\d{4}$').any():
+                forced_mapping['nr_faktury'] = col
+                continue
+            
+            # Sprawdź czy kolumna zawiera daty w różnych formatach
+            if self.excel_data[col].astype(str).str.contains(r'\d{2}\.\d{2}\.\d{4}').any():
+                forced_mapping['data_faktury'] = col
+                continue
+        
+        # Aplikuj wymuszone mapowanie
+        if forced_mapping:
+            self.set_column_mapping(forced_mapping)
+            self.logger.info(f"Wymuszone mapowanie kolumn: {forced_mapping}")
+            
+            # Sprawdź i popraw mapowanie kolumn
+            self.check_and_fix_column_mapping()
+            
             return True
-        else:
-            self.logger.warning(f"Nie można zmapować {field} na {column_name} - kolumna nie istnieje")
+        
+        return False
+    
+    def check_and_fix_column_mapping(self):
+        """Sprawdza i poprawia mapowanie kolumn"""
+        if self.excel_data is None:
+            return False
+        
+        try:
+            # Sprawdź czy kolumna 'Data' jest zmapowana jako 'data_faktury'
+            if 'Data' in self.excel_data.columns and 'data_faktury' not in self.column_mapping:
+                self.force_column_mapping('data_faktury', 'Data')
+                self.logger.info("Zmapowano kolumnę 'Data' jako 'data_faktury'")
+            
+            # Sprawdź czy kolumna 'Kontrahent' jest zmapowana
+            if 'Kontrahent' in self.excel_data.columns and 'kontrahent' not in self.column_mapping:
+                self.force_column_mapping('kontrahent', 'Kontrahent')
+                self.logger.info("Zmapowano kolumnę 'Kontrahent' jako 'kontrahent'")
+            
+            # Sprawdź czy kolumna 'NIP' jest zmapowana
+            if 'NIP' in self.excel_data.columns and 'nip' not in self.column_mapping:
+                self.force_column_mapping('nip', 'NIP')
+                self.logger.info("Zmapowano kolumnę 'NIP' jako 'nip'")
+            
+            # Sprawdź czy kolumna 'EMAIL' jest zmapowana
+            if 'EMAIL' in self.excel_data.columns and 'email' not in self.column_mapping:
+                self.force_column_mapping('email', 'EMAIL')
+                self.logger.info("Zmapowano kolumnę 'EMAIL' jako 'email'")
+            
+            # Sprawdź czy kolumna 'Telefon komorkowy' jest zmapowana
+            if 'Telefon komorkowy' in self.excel_data.columns and 'telefon' not in self.column_mapping:
+                self.force_column_mapping('telefon', 'Telefon komorkowy')
+                self.logger.info("Zmapowano kolumnę 'Telefon komorkowy' jako 'telefon'")
+            
+            # Sprawdź czy kolumna 'Netto' jest zmapowana jako 'kwota'
+            if 'Netto' in self.excel_data.columns and 'kwota' not in self.column_mapping:
+                self.force_column_mapping('kwota', 'Netto')
+                self.logger.info("Zmapowano kolumnę 'Netto' jako 'kwota'")
+            
+            # Sprawdź czy kolumna 'Numer' jest zmapowana jako 'nr_faktury'
+            if 'Numer' in self.excel_data.columns and 'nr_faktury' not in self.column_mapping:
+                self.force_column_mapping('nr_faktury', 'Numer')
+                self.logger.info("Zmapowano kolumnę 'Numer' jako 'nr_faktury'")
+            
+            # Sprawdź czy kolumna 'Kwota p?atno?ci' jest zmapowana jako 'kwota_platnosci'
+            if 'Kwota p?atno?ci' in self.excel_data.columns and 'kwota_platnosci' not in self.column_mapping:
+                self.force_column_mapping('kwota_platnosci', 'Kwota p?atno?ci')
+                self.logger.info("Zmapowano kolumnę 'Kwota p?atno?ci' jako 'kwota_platnosci'")
+            
+            # Sprawdź czy kolumna 'VAT' jest zmapowana
+            if 'VAT' in self.excel_data.columns and 'vat' not in self.column_mapping:
+                self.force_column_mapping('vat', 'VAT')
+                self.logger.info("Zmapowano kolumnę 'VAT' jako 'vat'")
+            
+            # Sprawdź czy kolumna 'Warto??/B' jest zmapowana jako 'wartosc_brutto'
+            if 'Warto??/B' in self.excel_data.columns and 'wartosc_brutto' not in self.column_mapping:
+                self.force_column_mapping('wartosc_brutto', 'Warto??/B')
+                self.logger.info("Zmapowano kolumnę 'Warto??/B' jako 'wartosc_brutto'")
+            
+            return True
+            
+        except Exception as e:
+            self.logger.error(f"Błąd podczas sprawdzania i poprawiania mapowania: {e}")
             return False
     
     def get_unmapped_columns(self):

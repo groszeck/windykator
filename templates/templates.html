@@ -1,0 +1,532 @@
+{% extends "base.html" %}
+
+{% block title %}Windykator Web - Szablony{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h1 class="h2">
+                <i class="bi bi-file-text text-primary me-3"></i>
+                Zarządzanie szablonami
+            </h1>
+            <a href="{{ url_for('index') }}" class="btn btn-outline-secondary">
+                <i class="bi bi-arrow-left me-1"></i>Powrót
+            </a>
+        </div>
+    </div>
+</div>
+
+<!-- Template Tabs -->
+<div class="row">
+    <div class="col-12">
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-light">
+                <ul class="nav nav-tabs card-header-tabs" id="templateTabs" role="tablist">
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link active" id="email-tab" data-bs-toggle="tab" 
+                                data-bs-target="#email" type="button" role="tab">
+                            <i class="bi bi-envelope me-2"></i>Szablon Email
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="sms-tab" data-bs-toggle="tab" 
+                                data-bs-target="#sms" type="button" role="tab">
+                            <i class="bi bi-phone me-2"></i>Szablon SMS
+                        </button>
+                    </li>
+                </ul>
+            </div>
+            <div class="card-body">
+                <div class="tab-content" id="templateTabContent">
+                    <!-- Email Template Tab -->
+                    <div class="tab-pane fade show active" id="email" role="tabpanel">
+                        <div class="row">
+                            <div class="col-lg-8">
+                                <form method="POST" action="{{ url_for('save_template') }}">
+                                    <input type="hidden" name="template_type" value="email">
+                                    
+                                    <div class="mb-3">
+                                        <label for="emailSubject" class="form-label">
+                                            <strong>Temat emaila</strong>
+                                        </label>
+                                        <input type="text" class="form-control" id="emailSubject" 
+                                               name="email_subject" value="Przypomnienie o płatności faktury"
+                                               placeholder="Wprowadź temat emaila">
+                                    </div>
+                                    
+                                    <div class="mb-3">
+                                        <label for="emailContent" class="form-label">
+                                            <strong>Treść emaila (HTML)</strong>
+                                        </label>
+                                        <textarea class="form-control template-editor" id="emailContent" 
+                                                  name="content" rows="15" placeholder="Wprowadź treść emaila...">{{ email_template }}</textarea>
+                                        <div class="form-text">
+                                            Możesz używać znaczników HTML i placeholderów
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="d-grid">
+                                        <button type="submit" class="btn btn-primary">
+                                            <i class="bi bi-save me-2"></i>Zapisz szablon email
+                                        </button>
+                                    </div>
+                                </form>
+                            </div>
+                            
+                            <div class="col-lg-4">
+                                <!-- Email Template Help -->
+                                <div class="card border-0 shadow-sm mb-4">
+                                    <div class="card-header bg-info text-white">
+                                        <h6 class="mb-0">
+                                            <i class="bi bi-info-circle me-2"></i>
+                                            Pomoc - Szablon Email
+                                        </h6>
+                                    </div>
+                                    <div class="card-body">
+                                        <h6>Dostępne placeholdery:</h6>
+                                        <div class="table-responsive">
+                                            <table class="table table-sm">
+                                                <tbody>
+                                                    <tr><td><code>{kontrahent}</code></td><td>Nazwa firmy</td></tr>
+                                                    <tr><td><code>{nip}</code></td><td>Numer NIP</td></tr>
+                                                    <tr><td><code>{nr_faktury}</code></td><td>Nr faktury</td></tr>
+                                                    <tr><td><code>{kwota}</code></td><td>Kwota do zapłaty</td></tr>
+                                                    <tr><td><code>{dni_po_terminie}</code></td><td>Dni po terminie</td></tr>
+                                                    <tr><td><code>{data_faktury}</code></td><td>Data faktury</td></tr>
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                        
+                                        <h6 class="mt-3">Przykład:</h6>
+                                        <div class="code-block">
+                                            <p>Szanowni Państwo,</p>
+                                            <p>Firma <strong>{kontrahent}</strong> ma zaległą płatność za fakturę {nr_faktury} w kwocie {kwota} PLN.</p>
+                                            <p>Termin płatności minął {dni_po_terminie} dni temu.</p>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <!-- Email Preview -->
+                                <div class="card border-0 shadow-sm">
+                                    <div class="card-header bg-success text-white">
+                                        <h6 class="mb-0">
+                                            <i class="bi bi-eye me-2"></i>
+                                            Podgląd emaila
+                                        </h6>
+                                    </div>
+                                    <div class="card-body">
+                                        <button type="button" class="btn btn-outline-success btn-sm w-100 mb-2" 
+                                                onclick="previewEmail()">
+                                            <i class="bi bi-eye me-1"></i>Podgląd
+                                        </button>
+                                        <button type="button" class="btn btn-outline-info btn-sm w-100" 
+                                                onclick="testEmailTemplate()">
+                                            <i class="bi bi-bug me-1"></i>Test szablonu
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- SMS Template Tab -->
+                    <div class="tab-pane fade" id="sms" role="tabpanel">
+                        <div class="row">
+                            <div class="col-lg-8">
+                                <form method="POST" action="{{ url_for('save_template') }}">
+                                    <input type="hidden" name="template_type" value="sms">
+                                    
+                                    <div class="mb-3">
+                                        <label for="smsContent" class="form-label">
+                                            <strong>Treść SMS</strong>
+                                        </label>
+                                        <textarea class="form-control template-editor" id="smsContent" 
+                                                  name="content" rows="8" placeholder="Wprowadź treść SMS...">{{ sms_template }}</textarea>
+                                        <div class="form-text">
+                                            Maksymalnie 160 znaków (1 SMS) lub 306 znaków (2 SMS)
+                                        </div>
+                                        <div class="mt-2">
+                                            <span class="badge bg-info" id="smsCharCount">0 znaków</span>
+                                            <span class="badge bg-warning" id="smsCount">1 SMS</span>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="d-grid">
+                                        <button type="submit" class="btn btn-primary">
+                                            <i class="bi bi-save me-2"></i>Zapisz szablon SMS
+                                        </button>
+                                    </div>
+                                </form>
+                            </div>
+                            
+                            <div class="col-lg-4">
+                                <!-- SMS Template Help -->
+                                <div class="card border-0 shadow-sm mb-4">
+                                    <div class="card-header bg-info text-white">
+                                        <h6 class="mb-0">
+                                            <i class="bi bi-info-circle me-2"></i>
+                                            Pomoc - Szablon SMS
+                                        </h6>
+                                    </div>
+                                    <div class="card-body">
+                                        <h6>Dostępne placeholdery:</h6>
+                                        <div class="table-responsive">
+                                            <table class="table table-sm">
+                                                <tbody>
+                                                    <tr><td><code>{kontrahent}</code></td><td>Nazwa firmy</td></tr>
+                                                    <tr><td><code>{kwota}</code></td><td>Kwota do zapłaty</td></tr>
+                                                    <tr><td><code>{dni_po_terminie}</code></td><td>Dni po terminie</td></tr>
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                        
+                                        <h6 class="mt-3">Przykład:</h6>
+                                        <div class="code-block">
+                                            Firma {kontrahent} ma zaległą płatność {kwota} PLN. Termin minął {dni_po_terminie} dni temu.
+                                        </div>
+                                        
+                                        <div class="alert alert-warning mt-3 mb-0">
+                                            <i class="bi bi-exclamation-triangle me-2"></i>
+                                            <strong>Uwaga:</strong> SMS powinien być krótki i konkretny.
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <!-- SMS Preview -->
+                                <div class="card border-0 shadow-sm">
+                                    <div class="card-header bg-success text-white">
+                                        <h6 class="mb-0">
+                                            <i class="bi bi-eye me-2"></i>
+                                            Podgląd SMS
+                                        </h6>
+                                    </div>
+                                    <div class="card-body">
+                                        <button type="button" class="btn btn-outline-success btn-sm w-100 mb-2" 
+                                                onclick="previewSMS()">
+                                            <i class="bi bi-eye me-1"></i>Podgląd
+                                        </button>
+                                        <button type="button" class="btn btn-outline-info btn-sm w-100" 
+                                                onclick="testSMSTemplate()">
+                                            <i class="bi bi-bug me-1"></i>Test szablonu
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Template Management -->
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-light">
+                <h6 class="mb-0">
+                    <i class="bi bi-gear me-2"></i>
+                    Zarządzanie szablonami
+                </h6>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <div class="d-grid">
+                            <button type="button" class="btn btn-outline-warning" onclick="resetTemplates()">
+                                <i class="bi bi-arrow-clockwise me-2"></i>
+                                Przywróć domyślne szablony
+                            </button>
+                        </div>
+                        <small class="text-muted">
+                            Przywraca oryginalne szablony z plików
+                        </small>
+                    </div>
+                    
+                    <div class="col-md-6 mb-3">
+                        <div class="d-grid">
+                            <button type="button" class="btn btn-outline-info" onclick="exportTemplates()">
+                                <i class="bi bi-download me-2"></i>
+                                Eksportuj szablony
+                            </button>
+                        </div>
+                        <small class="text-muted">
+                            Zapisuje szablony do pliku JSON
+                        </small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Preview Modal -->
+<div class="modal fade" id="previewModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="previewModalTitle">Podgląd szablonu</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="previewModalBody">
+                <!-- Preview content will be inserted here -->
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Zamknij</button>
+                <button type="button" class="btn btn-primary" onclick="copyPreviewContent()">
+                    <i class="bi bi-clipboard me-1"></i>Kopiuj
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Initialize SMS character counter
+    initializeSMSCharCounter();
+    
+    // Initialize template tabs
+    initializeTemplateTabs();
+});
+
+function initializeSMSCharCounter() {
+    const smsContent = document.getElementById('smsContent');
+    const charCount = document.getElementById('smsCharCount');
+    const smsCount = document.getElementById('smsCount');
+    
+    function updateCounter() {
+        const text = smsContent.value;
+        const length = text.length;
+        
+        charCount.textContent = `${length} znaków`;
+        
+        if (length <= 160) {
+            smsCount.textContent = '1 SMS';
+            smsCount.className = 'badge bg-success';
+        } else if (length <= 306) {
+            smsCount.textContent = '2 SMS';
+            smsCount.className = 'badge bg-warning';
+        } else {
+            smsCount.textContent = '3+ SMS';
+            smsCount.className = 'badge bg-danger';
+        }
+    }
+    
+    smsContent.addEventListener('input', updateCounter);
+    updateCounter(); // Initial count
+}
+
+function initializeTemplateTabs() {
+    const tabEls = document.querySelectorAll('button[data-bs-toggle="tab"]');
+    tabEls.forEach(tabEl => {
+        tabEl.addEventListener('shown.bs.tab', function(event) {
+            // Update active tab indicator
+            document.querySelectorAll('.nav-link').forEach(nav => nav.classList.remove('active'));
+            event.target.classList.add('active');
+        });
+    });
+}
+
+function previewEmail() {
+    const content = document.getElementById('emailContent').value;
+    const subject = document.getElementById('emailSubject').value;
+    
+    // Sample data for preview
+    const sampleData = {
+        kontrahent: 'Przykładowa Firma Sp. z o.o.',
+        nip: '1234567890',
+        nr_faktury: 'FV/2025/001',
+        kwota: '1,250.00 PLN',
+        dni_po_terminie: '15',
+        data_faktury: '15.07.2025'
+    };
+    
+    // Replace placeholders
+    let previewContent = content;
+    Object.keys(sampleData).forEach(key => {
+        const regex = new RegExp(`{${key}}`, 'g');
+        previewContent = previewContent.replace(regex, sampleData[key]);
+    });
+    
+    // Show preview modal
+    document.getElementById('previewModalTitle').textContent = 'Podgląd emaila';
+    document.getElementById('previewModalBody').innerHTML = `
+        <div class="mb-3">
+            <label class="form-label"><strong>Temat:</strong></label>
+            <div class="form-control-plaintext">${subject}</div>
+        </div>
+        <div class="mb-3">
+            <label class="form-label"><strong>Treść:</strong></label>
+            <div class="border rounded p-3 bg-light" style="min-height: 200px;">
+                ${previewContent}
+            </div>
+        </div>
+        <div class="alert alert-info">
+            <i class="bi bi-info-circle me-2"></i>
+            To jest podgląd z przykładowymi danymi. Rzeczywiste dane będą podstawione podczas wysyłki.
+        </div>
+    `;
+    
+    const modal = new bootstrap.Modal(document.getElementById('previewModal'));
+    modal.show();
+}
+
+function previewSMS() {
+    const content = document.getElementById('smsContent').value;
+    
+    // Sample data for preview
+    const sampleData = {
+        kontrahent: 'Przykładowa Firma',
+        kwota: '1,250.00 PLN',
+        dni_po_terminie: '15'
+    };
+    
+    // Replace placeholders
+    let previewContent = content;
+    Object.keys(sampleData).forEach(key => {
+        const regex = new RegExp(`{${key}}`, 'g');
+        previewContent = previewContent.replace(regex, sampleData[key]);
+    });
+    
+    // Show preview modal
+    document.getElementById('previewModalTitle').textContent = 'Podgląd SMS';
+    document.getElementById('previewModalBody').innerHTML = `
+        <div class="mb-3">
+            <label class="form-label"><strong>Treść SMS:</strong></label>
+            <div class="border rounded p-3 bg-light">
+                <pre class="mb-0">${previewContent}</pre>
+            </div>
+        </div>
+        <div class="row">
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-body text-center">
+                        <h6>Długość</h6>
+                        <span class="badge bg-info fs-5">${previewContent.length} znaków</span>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-body text-center">
+                        <h6>Liczba SMS</h6>
+                        <span class="badge ${previewContent.length <= 160 ? 'bg-success' : previewContent.length <= 306 ? 'bg-warning' : 'bg-danger'} fs-5">
+                            ${previewContent.length <= 160 ? '1' : previewContent.length <= 306 ? '2' : '3+'}
+                        </span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="alert alert-info mt-3">
+            <i class="bi bi-info-circle me-2"></i>
+            To jest podgląd z przykładowymi danymi. Rzeczywiste dane będą podstawione podczas wysyłki.
+        </div>
+    `;
+    
+    const modal = new bootstrap.Modal(document.getElementById('previewModal'));
+    modal.show();
+}
+
+function testEmailTemplate() {
+    const content = document.getElementById('emailContent').value;
+    
+    // Check for placeholders
+    const placeholders = content.match(/\{([^}]+)\}/g) || [];
+    const requiredPlaceholders = ['kontrahent', 'kwota'];
+    
+    let missing = [];
+    requiredPlaceholders.forEach(placeholder => {
+        if (!placeholders.includes(`{${placeholder}}`)) {
+            missing.push(placeholder);
+        }
+    });
+    
+    if (missing.length > 0) {
+        showAlert(`Brak wymaganych placeholderów: ${missing.join(', ')}`, 'warning');
+    } else {
+        showAlert('Szablon email wygląda dobrze!', 'success');
+    }
+}
+
+function testSMSTemplate() {
+    const content = document.getElementById('smsContent').value;
+    
+    // Check for placeholders
+    const placeholders = content.match(/\{([^}]+)\}/g) || [];
+    const requiredPlaceholders = ['kontrahent', 'kwota'];
+    
+    let missing = [];
+    requiredPlaceholders.forEach(placeholder => {
+        if (!placeholders.includes(`{${placeholder}}`)) {
+            missing.push(placeholder);
+        }
+    });
+    
+    if (missing.length > 0) {
+        showAlert(`Brak wymaganych placeholderów: ${missing.join(', ')}`, 'warning');
+    } else if (content.length > 306) {
+        showAlert('SMS jest za długi (maksymalnie 306 znaków)', 'warning');
+    } else {
+        showAlert('Szablon SMS wygląda dobrze!', 'success');
+    }
+}
+
+function resetTemplates() {
+    if (confirm('Czy na pewno chcesz przywrócić domyślne szablony? Wszystkie zmiany zostaną utracone.')) {
+        // This would typically make an API call to reset templates
+        showAlert('Przywracanie domyślnych szablonów...', 'info');
+        
+        // Simulate reset
+        setTimeout(() => {
+            location.reload();
+        }, 1500);
+    }
+}
+
+function exportTemplates() {
+    const emailContent = document.getElementById('emailContent').value;
+    const smsContent = document.getElementById('smsContent').value;
+    
+    const templates = {
+        email: emailContent,
+        sms: smsContent,
+        export_date: new Date().toISOString()
+    };
+    
+    const dataStr = JSON.stringify(templates, null, 2);
+    const dataBlob = new Blob([dataStr], { type: 'application/json' });
+    
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(dataBlob);
+    link.download = 'windykator_templates.json';
+    link.click();
+    
+    showAlert('Szablony zostały wyeksportowane', 'success');
+}
+
+function copyPreviewContent() {
+    const previewBody = document.getElementById('previewModalBody');
+    const textToCopy = previewBody.textContent || previewBody.innerText;
+    
+    navigator.clipboard.writeText(textToCopy).then(() => {
+        showAlert('Treść została skopiowana do schowka', 'success');
+    }).catch(() => {
+        showAlert('Błąd kopiowania', 'danger');
+    });
+}
+
+function showAlert(message, type = 'info') {
+    if (window.WindykatorWeb && window.WindykatorWeb.showAlert) {
+        window.WindykatorWeb.showAlert(message, type);
+    } else {
+        // Fallback alert
+        alert(message);
+    }
+}
+</script>
+{% endblock %} 

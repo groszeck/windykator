@@ -1,0 +1,895 @@
+{% extends "base.html" %}
+
+{% block title %}Windykator Web - Wysyłka{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h1 class="h2">
+                <i class="bi bi-send text-primary me-3"></i>
+                Wysyłka powiadomień
+            </h1>
+            <div class="d-flex gap-2">
+                <a href="{{ url_for('preview') }}" class="btn btn-outline-secondary">
+                    <i class="bi bi-arrow-left me-1"></i>Podgląd
+                </a>
+                <a href="{{ url_for('index') }}" class="btn btn-outline-primary">
+                    <i class="bi bi-house me-1"></i>Strona główna
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Sending Summary -->
+<div class="row mb-4">
+    <div class="col-md-3 mb-3">
+        <div class="card border-0 shadow-sm text-center">
+            <div class="card-body">
+                <div class="display-6 text-primary mb-2">
+                    <i class="bi bi-table"></i>
+                </div>
+                <h5 class="card-title">Pozycje do wysłania</h5>
+                <p class="display-6 text-primary mb-0">{{ data_count }}</p>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-3 mb-3">
+        <div class="card border-0 shadow-sm text-center">
+            <div class="card-body">
+                <div class="display-6 text-success mb-2">
+                    <i class="bi bi-envelope"></i>
+                </div>
+                <h5 class="card-title">Z emailem</h5>
+                <p class="display-6 text-success mb-0" id="emailCount">-</p>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-3 mb-3">
+        <div class="card border-0 shadow-sm text-center">
+            <div class="card-body">
+                <div class="display-6 text-info mb-2">
+                    <i class="bi bi-phone"></i>
+                </div>
+                <h5 class="card-title">Z telefonem</h5>
+                <p class="display-6 text-info mb-0" id="phoneCount">-</p>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-3 mb-3">
+        <div class="card border-0 shadow-sm text-center">
+            <div class="card-body">
+                <div class="display-6 text-warning mb-2">
+                    <i class="bi bi-calendar-exclamation"></i>
+                </div>
+                <h5 class="card-title">Po terminie</h5>
+                <p class="display-6 text-warning mb-0" id="overdueCount">-</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Sending Configuration -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0">
+                    <i class="bi bi-gear me-2"></i>
+                    Konfiguracja wysyłki
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" id="emailSwitch" checked>
+                            <label class="form-check-label" for="emailSwitch">
+                                <i class="bi bi-envelope text-success me-2"></i>
+                                <strong>Wysyłaj emaile</strong>
+                            </label>
+                        </div>
+                        <small class="text-muted">
+                            Wysyła powiadomienia email do kontrahentów
+                        </small>
+                    </div>
+                    
+                    <div class="col-md-6 mb-3">
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" id="smsSwitch" checked>
+                            <label class="form-check-label" for="smsSwitch">
+                                <i class="bi bi-phone text-info me-2"></i>
+                                <strong>Wysyłaj SMS</strong>
+                            </label>
+                        </div>
+                        <small class="text-muted">
+                            Wysyła powiadomienia SMS do kontrahentów
+                        </small>
+                    </div>
+                </div>
+                
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" id="testModeSwitch">
+                            <label class="form-check-label" for="testModeSwitch">
+                                <i class="bi bi-bug text-warning me-2"></i>
+                                <strong>Tryb testowy</strong>
+                            </label>
+                        </div>
+                        <small class="text-muted">
+                            Symuluje wysyłkę bez rzeczywistego wysłania
+                        </small>
+                    </div>
+                    
+                    <div class="col-md-6 mb-3">
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" id="dryRunSwitch">
+                            <label class="form-check-label" for="dryRunSwitch">
+                                <i class="bi bi-eye text-info me-2"></i>
+                                <strong>Podgląd przed wysłaniem</strong>
+                            </label>
+                        </div>
+                        <small class="text-muted">
+                            Pokazuje podgląd wszystkich wiadomości
+                        </small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Sending Actions -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-success text-white">
+                <h5 class="mb-0">
+                    <i class="bi bi-rocket me-2"></i>
+                    Akcje wysyłki
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-4 mb-3">
+                        <div class="d-grid">
+                            <button type="button" class="btn btn-warning btn-lg" onclick="startTestSending()">
+                                <i class="bi bi-bug me-2"></i>
+                                🧪 Testuj wysyłkę
+                            </button>
+                        </div>
+                        <small class="text-muted">
+                            Symuluje wysyłkę wszystkich wiadomości
+                        </small>
+                    </div>
+                    
+                    <div class="col-md-4 mb-3">
+                        <div class="d-grid">
+                            <button type="button" class="btn btn-info btn-lg" onclick="previewAllMessages()">
+                                <i class="bi bi-eye me-2"></i>
+                                👁️ Podgląd wiadomości
+                            </button>
+                        </div>
+                        <small class="text-muted">
+                            Pokazuje wszystkie wiadomości przed wysłaniem
+                        </small>
+                    </div>
+                    
+                    <div class="col-md-4 mb-3">
+                        <div class="d-grid">
+                            <button type="button" class="btn btn-success btn-lg" onclick="startRealSending()">
+                                <i class="bi bi-rocket me-2"></i>
+                                🚀 Rozpocznij wysyłkę
+                            </button>
+                        </div>
+                        <small class="text-muted">
+                            Wysyła rzeczywiste wiadomości
+                        </small>
+                    </div>
+                </div>
+                
+                <div class="alert alert-warning mt-3 mb-0">
+                    <i class="bi bi-exclamation-triangle me-2"></i>
+                    <strong>Wskazówka:</strong> Zawsze testuj wysyłkę przed rzeczywistym wysłaniem!
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Sending Progress -->
+<div class="row mb-4" id="sendingProgress" style="display: none;">
+    <div class="col-12">
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-info text-white">
+                <h6 class="mb-0">
+                    <i class="bi bi-arrow-clockwise me-2"></i>
+                    Postęp wysyłki
+                </h6>
+            </div>
+            <div class="card-body">
+                <div class="progress mb-3">
+                    <div class="progress-bar progress-bar-striped progress-bar-animated" 
+                         role="progressbar" style="width: 0%" id="sendingProgressBar">0%</div>
+                </div>
+                <div class="text-center">
+                    <small class="text-muted" id="sendingProgressText">Przygotowywanie...</small>
+                </div>
+                <div class="text-center mt-2">
+                    <button type="button" class="btn btn-outline-danger btn-sm" onclick="cancelSending()">
+                        <i class="bi bi-x-circle me-1"></i>Anuluj wysyłkę
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Sending Results -->
+<div class="row mb-4" id="sendingResults" style="display: none;">
+    <div class="col-12">
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-success text-white">
+                <h6 class="mb-0">
+                    <i class="bi bi-check-circle me-2"></i>
+                    Wyniki wysyłki
+                </h6>
+            </div>
+            <div class="card-body">
+                <div class="row text-center">
+                    <div class="col-md-3 mb-2">
+                        <div class="p-3 bg-light rounded">
+                            <i class="bi bi-check-circle text-success fs-1"></i>
+                            <p class="mb-0 mt-2"><strong>Udane</strong></p>
+                            <span class="badge bg-success" id="successCount">0</span>
+                        </div>
+                    </div>
+                    <div class="col-md-3 mb-2">
+                        <div class="p-3 bg-light rounded">
+                            <i class="bi bi-x-circle text-danger fs-1"></i>
+                            <p class="mb-0 mt-2"><strong>Nieudane</strong></p>
+                            <span class="badge bg-danger" id="errorCount">0</span>
+                        </div>
+                    </div>
+                    <div class="col-md-3 mb-2">
+                        <div class="p-3 bg-light rounded">
+                            <i class="bi bi-envelope text-primary fs-1"></i>
+                            <p class="mb-0 mt-2"><strong>Emaile</strong></p>
+                            <span class="badge bg-primary" id="emailSentCount">0</span>
+                        </div>
+                    </div>
+                    <div class="col-md-3 mb-2">
+                        <div class="p-3 bg-light rounded">
+                            <i class="bi bi-phone text-info fs-1"></i>
+                            <p class="mb-0 mt-2"><strong>SMS</strong></p>
+                            <span class="badge bg-info" id="smsSentCount">0</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="d-flex gap-2 justify-content-center mt-3">
+                    <button type="button" class="btn btn-outline-primary" onclick="exportResults()">
+                        <i class="bi bi-download me-1"></i>Eksportuj wyniki
+                    </button>
+                    <button type="button" class="btn btn-outline-info" onclick="viewDetailedResults()">
+                        <i class="bi bi-eye me-1"></i>Szczegółowe wyniki
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Data Preview Table -->
+<div class="row">
+    <div class="col-12">
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-light d-flex justify-content-between align-items-center">
+                <h6 class="mb-0">
+                    <i class="bi bi-table me-2"></i>
+                    Dane do wysłania ({{ data_count }} pozycji)
+                </h6>
+                <div class="d-flex gap-2">
+                    <button type="button" class="btn btn-outline-secondary btn-sm" onclick="toggleTableSelection()">
+                        <i class="bi bi-check-square me-1"></i>Zaznacz wszystko
+                    </button>
+                    <button type="button" class="btn btn-outline-info btn-sm" onclick="filterTable()">
+                        <i class="bi bi-funnel me-1"></i>Filtruj
+                    </button>
+                </div>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0" id="sendingTable">
+                        <thead>
+                            <tr>
+                                <th>
+                                    <input type="checkbox" class="form-check-input" id="selectAllCheckbox">
+                                </th>
+                                <th>Kontrahent</th>
+                                <th>NIP</th>
+                                <th>Nr faktury</th>
+                                <th>Email</th>
+                                <th>Telefon</th>
+                                <th>Kwota</th>
+                                <th>Dni po terminie</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for item in preview_data %}
+                            <tr>
+                                <td>
+                                    <input type="checkbox" class="form-check-input row-checkbox" 
+                                           value="{{ loop.index0 }}" checked>
+                                </td>
+                                <td>{{ item.get('kontrahent', '') }}</td>
+                                <td>{{ item.get('nip', '') }}</td>
+                                <td>{{ item.get('nr_faktury', '') }}</td>
+                                <td>
+                                    {% if item.get('email') %}
+                                        <span class="badge bg-success">{{ item.get('email', '') }}</span>
+                                    {% else %}
+                                        <span class="badge bg-secondary">Brak</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if item.get('telefon') %}
+                                        <span class="badge bg-info">{{ item.get('telefon', '') }}</span>
+                                    {% else %}
+                                        <span class="badge bg-secondary">Brak</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <span class="fw-bold text-primary">
+                                        {{ item.get('kwota', '') }}
+                                    </span>
+                                </td>
+                                <td>
+                                    {% set days = item.get('dni_po_terminie', 0) %}
+                                    {% if days > 0 %}
+                                        <span class="badge bg-danger">{{ days }} dni</span>
+                                    {% elif days == 0 %}
+                                        <span class="badge bg-success">W terminie</span>
+                                    {% else %}
+                                        <span class="badge bg-secondary">Brak daty</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <span class="badge bg-secondary" id="status-{{ loop.index0 }}">Oczekuje</span>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Message Preview Modal -->
+<div class="modal fade" id="messagePreviewModal" tabindex="-1">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Podgląd wiadomości</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div id="messagePreviewContent">
+                    <!-- Message preview content will be inserted here -->
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Zamknij</button>
+                <button type="button" class="btn btn-primary" onclick="startRealSending()">
+                    <i class="bi bi-rocket me-1"></i>Rozpocznij wysyłkę
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Initialize sending page
+    initializeSendingPage();
+    
+    // Initialize table selection
+    initializeTableSelection();
+});
+
+function initializeSendingPage() {
+    // Count data types
+    countDataTypes();
+    
+    // Initialize switches
+    initializeSwitches();
+}
+
+function countDataTypes() {
+    const table = document.getElementById('sendingTable');
+    const rows = table.querySelectorAll('tbody tr');
+    
+    let emailCount = 0;
+    let phoneCount = 0;
+    let overdueCount = 0;
+    
+    rows.forEach(row => {
+        const cells = row.querySelectorAll('td');
+        
+        // Count emails
+        if (cells[4].textContent.includes('@')) {
+            emailCount++;
+        }
+        
+        // Count phones
+        if (cells[5].textContent !== 'Brak') {
+            phoneCount++;
+        }
+        
+        // Count overdue
+        if (cells[7].textContent.includes('dni') && cells[7].textContent !== 'W terminie') {
+            overdueCount++;
+        }
+    });
+    
+    // Update counters
+    document.getElementById('emailCount').textContent = emailCount;
+    document.getElementById('phoneCount').textContent = phoneCount;
+    document.getElementById('overdueCount').textContent = overdueCount;
+}
+
+function initializeSwitches() {
+    const emailSwitch = document.getElementById('emailSwitch');
+    const smsSwitch = document.getElementById('smsSwitch');
+    
+    // Update table based on switch states
+    emailSwitch.addEventListener('change', updateTableVisibility);
+    smsSwitch.addEventListener('change', updateTableVisibility);
+}
+
+function updateTableVisibility() {
+    const emailEnabled = document.getElementById('emailSwitch').checked;
+    const smsEnabled = document.getElementById('smsSwitch').checked;
+    const table = document.getElementById('sendingTable');
+    const rows = table.querySelectorAll('tbody tr');
+    
+    rows.forEach(row => {
+        const cells = row.querySelectorAll('td');
+        const hasEmail = cells[4].textContent.includes('@');
+        const hasPhone = cells[5].textContent !== 'Brak';
+        
+        let visible = false;
+        
+        if (emailEnabled && hasEmail) visible = true;
+        if (smsEnabled && hasPhone) visible = true;
+        
+        row.style.display = visible ? '' : 'none';
+    });
+}
+
+function initializeTableSelection() {
+    const selectAllCheckbox = document.getElementById('selectAllCheckbox');
+    const rowCheckboxes = document.querySelectorAll('.row-checkbox');
+    
+    selectAllCheckbox.addEventListener('change', function() {
+        rowCheckboxes.forEach(checkbox => {
+            checkbox.checked = selectAllCheckbox.checked;
+        });
+    });
+    
+    rowCheckboxes.forEach(checkbox => {
+        checkbox.addEventListener('change', function() {
+            updateSelectAllCheckbox();
+        });
+    });
+}
+
+function updateSelectAllCheckbox() {
+    const selectAllCheckbox = document.getElementById('selectAllCheckbox');
+    const rowCheckboxes = document.querySelectorAll('.row-checkbox');
+    const checkedCount = Array.from(rowCheckboxes).filter(cb => cb.checked).length;
+    
+    selectAllCheckbox.checked = checkedCount === rowCheckboxes.length;
+    selectAllCheckbox.indeterminate = checkedCount > 0 && checkedCount < rowCheckboxes.length;
+}
+
+function toggleTableSelection() {
+    const selectAllCheckbox = document.getElementById('selectAllCheckbox');
+    selectAllCheckbox.checked = !selectAllCheckbox.checked;
+    
+    const rowCheckboxes = document.querySelectorAll('.row-checkbox');
+    rowCheckboxes.forEach(checkbox => {
+        checkbox.checked = selectAllCheckbox.checked;
+    });
+}
+
+function startTestSending() {
+    if (!validateSendingConfiguration()) return;
+    
+    showSendingProgress();
+    simulateTestSending();
+}
+
+function startRealSending() {
+    if (!validateSendingConfiguration()) return;
+    
+    if (!confirm('Czy na pewno chcesz rozpocząć rzeczywistą wysyłkę? Ta operacja nie może być cofnięta.')) {
+        return;
+    }
+    
+    showSendingProgress();
+    performRealSending();
+}
+
+function validateSendingConfiguration() {
+    const emailEnabled = document.getElementById('emailSwitch').checked;
+    const smsEnabled = document.getElementById('smsSwitch').checked;
+    
+    if (!emailEnabled && !smsEnabled) {
+        showAlert('Wybierz przynajmniej jeden typ wysyłki (email lub SMS)', 'warning');
+        return false;
+    }
+    
+    const selectedRows = getSelectedRows();
+    if (selectedRows.length === 0) {
+        showAlert('Wybierz przynajmniej jedną pozycję do wysłania', 'warning');
+        return false;
+    }
+    
+    return true;
+}
+
+function getSelectedRows() {
+    const checkboxes = document.querySelectorAll('.row-checkbox:checked');
+    return Array.from(checkboxes).map(cb => parseInt(cb.value));
+}
+
+function showSendingProgress() {
+    document.getElementById('sendingProgress').style.display = 'block';
+    document.getElementById('sendingResults').style.display = 'none';
+    
+    // Scroll to progress
+    document.getElementById('sendingProgress').scrollIntoView({ behavior: 'smooth' });
+}
+
+function simulateTestSending() {
+    const emailEnabled = document.getElementById('emailSwitch').checked;
+    const smsEnabled = document.getElementById('smsSwitch').checked;
+    
+    const progressBar = document.getElementById('sendingProgressBar');
+    const progressText = document.getElementById('sendingProgressText');
+    
+    progressText.textContent = 'Rozpoczynam testową wysyłkę...';
+    
+    // Przygotuj dane do testowej wysyłki
+    const selectedRows = getSelectedRows();
+    const requestData = {
+        send_email: emailEnabled,
+        send_sms: smsEnabled,
+        selected_rows: selectedRows
+    };
+    
+    // Wywołaj API testowej wysyłki
+    fetch('/api/test_sending', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(requestData)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            progressText.textContent = 'Test zakończony!';
+            progressBar.style.width = '100%';
+            progressBar.textContent = '100%';
+            
+            // Aktualizuj statusy w tabeli na podstawie wyników testu
+            updateTestResults(data.results);
+            
+            showTestResults();
+        } else {
+            progressText.textContent = 'Błąd testu!';
+            showAlert(data.message, 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Błąd testu:', error);
+        progressText.textContent = 'Błąd połączenia!';
+        showAlert('Błąd połączenia z serwerem', 'error');
+    });
+}
+
+function performRealSending() {
+    const emailEnabled = document.getElementById('emailSwitch').checked;
+    const smsEnabled = document.getElementById('smsSwitch').checked;
+    
+    const progressBar = document.getElementById('sendingProgressBar');
+    const progressText = document.getElementById('sendingProgressText');
+    
+    progressText.textContent = 'Rozpoczynam rzeczywistą wysyłkę...';
+    
+    // Przygotuj dane do wysłania
+    const selectedRows = getSelectedRows();
+    const requestData = {
+        send_email: emailEnabled,
+        send_sms: smsEnabled,
+        selected_rows: selectedRows
+    };
+    
+    // Wywołaj API rzeczywistej wysyłki
+    fetch('/api/real_sending', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(requestData)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            progressText.textContent = 'Wysyłka zakończona!';
+            progressBar.style.width = '100%';
+            progressBar.textContent = '100%';
+            
+            // Aktualizuj statusy w tabeli
+            updateSendingResults(data.results);
+            
+            showSendingResults();
+        } else {
+            progressText.textContent = 'Błąd wysyłki!';
+            showAlert(data.message, 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Błąd wysyłki:', error);
+        progressText.textContent = 'Błąd połączenia!';
+        showAlert('Błąd połączenia z serwerem', 'error');
+    });
+}
+
+function updateRowStatus(rowIndex, status, type) {
+    const statusElement = document.getElementById(`status-${rowIndex}`);
+    if (statusElement) {
+        statusElement.textContent = status;
+        statusElement.className = `badge bg-${type}`;
+    }
+}
+
+function updateTestResults(results) {
+    results.forEach((result, index) => {
+        const rowIndex = index;
+        
+        // Aktualizuj status email test
+        if (result.email_test) {
+            if (result.email_test.success) {
+                updateRowStatus(rowIndex, '🧪 Email Test OK', 'success');
+            } else {
+                updateRowStatus(rowIndex, '❌ Email Test błąd', 'danger');
+            }
+        }
+        
+        // Aktualizuj status SMS test
+        if (result.sms_test) {
+            if (result.sms_test.success) {
+                updateRowStatus(rowIndex, '🧪 SMS Test OK', 'success');
+            } else {
+                updateRowStatus(rowIndex, '❌ SMS Test błąd', 'danger');
+            }
+        }
+    });
+}
+
+function updateSendingResults(results) {
+    results.forEach((result, index) => {
+        const rowIndex = index;
+        
+        // Aktualizuj status email
+        if (result.email_status) {
+            if (result.email_status.success) {
+                updateRowStatus(rowIndex, '✅ Email OK', 'success');
+            } else {
+                updateRowStatus(rowIndex, '❌ Email błąd', 'danger');
+            }
+        }
+        
+        // Aktualizuj status SMS
+        if (result.sms_status) {
+            if (result.sms_status.success) {
+                updateRowStatus(rowIndex, '✅ SMS OK', 'success');
+            } else {
+                updateRowStatus(rowIndex, '❌ SMS błąd', 'danger');
+            }
+        }
+    });
+}
+
+function showTestResults() {
+    document.getElementById('sendingProgress').style.display = 'none';
+    document.getElementById('sendingResults').style.display = 'block';
+    
+    // Update result counts
+    const selectedRows = getSelectedRows();
+    document.getElementById('successCount').textContent = selectedRows.length;
+    document.getElementById('errorCount').textContent = '0';
+    document.getElementById('emailSentCount').textContent = '0';
+    document.getElementById('smsSentCount').textContent = '0';
+    
+    showAlert('Test wysyłki zakończony pomyślnie!', 'success');
+}
+
+function showSendingResults() {
+    document.getElementById('sendingProgress').style.display = 'none';
+    document.getElementById('sendingResults').style.display = 'block';
+    
+    // Calculate results
+    const table = document.getElementById('sendingTable');
+    const rows = table.querySelectorAll('tbody tr');
+    
+    let successCount = 0;
+    let errorCount = 0;
+    let emailCount = 0;
+    let smsCount = 0;
+    
+    rows.forEach(row => {
+        const statusCell = row.querySelector('td:last-child');
+        const status = statusCell.textContent;
+        
+        if (status.includes('✅')) {
+            successCount++;
+        } else if (status.includes('❌')) {
+            errorCount++;
+        }
+        
+        // Count by type (simplified)
+        if (status.includes('Email')) emailCount++;
+        if (status.includes('SMS')) smsCount++;
+    });
+    
+    // Update result counts
+    document.getElementById('successCount').textContent = successCount;
+    document.getElementById('errorCount').textContent = errorCount;
+    document.getElementById('emailSentCount').textContent = emailCount;
+    document.getElementById('smsSentCount').textContent = smsCount;
+    
+    showAlert('Wysyłka zakończona!', 'success');
+}
+
+function cancelSending() {
+    if (confirm('Czy na pewno chcesz anulować wysyłkę?')) {
+        document.getElementById('sendingProgress').style.display = 'none';
+        showAlert('Wysyłka została anulowana', 'info');
+    }
+}
+
+function previewAllMessages() {
+    const selectedRows = getSelectedRows();
+    if (selectedRows.length === 0) {
+        showAlert('Wybierz przynajmniej jedną pozycję do podglądu', 'warning');
+        return;
+    }
+    
+    // Generate preview content
+    let previewContent = '<h5>Podgląd wiadomości do wysłania</h5>';
+    previewContent += `<p>Wybrano ${selectedRows.length} pozycji</p>`;
+    
+    selectedRows.forEach((rowIndex, index) => {
+        const row = document.querySelector(`#sendingTable tbody tr:nth-child(${rowIndex + 1})`);
+        const cells = row.querySelectorAll('td');
+        
+        previewContent += `
+            <div class="card mb-3">
+                <div class="card-header">
+                    <strong>Pozycja ${index + 1}: ${cells[1].textContent}</strong>
+                </div>
+                <div class="card-body">
+                    <p><strong>NIP:</strong> ${cells[2].textContent}</p>
+                    <p><strong>Nr faktury:</strong> ${cells[3].textContent}</p>
+                    <p><strong>Kwota:</strong> ${cells[6].textContent}</p>
+                    <p><strong>Dni po terminie:</strong> ${cells[7].textContent}</p>
+                </div>
+            </div>
+        `;
+    });
+    
+    document.getElementById('messagePreviewContent').innerHTML = previewContent;
+    
+    const modal = new bootstrap.Modal(document.getElementById('messagePreviewModal'));
+    modal.show();
+}
+
+function exportResults() {
+    // Export sending results to CSV
+    const table = document.getElementById('sendingTable');
+    const rows = table.querySelectorAll('tbody tr');
+    const data = [];
+    
+    rows.forEach(row => {
+        const cells = row.querySelectorAll('td');
+        const status = cells[8].textContent;
+        
+        if (status !== 'Oczekuje') {
+            data.push({
+                'Kontrahent': cells[1].textContent,
+                'NIP': cells[2].textContent,
+                'Nr faktury': cells[3].textContent,
+                'Email': cells[4].textContent,
+                'Telefon': cells[5].textContent,
+                'Kwota': cells[6].textContent,
+                'Dni po terminie': cells[7].textContent,
+                'Status': status
+            });
+        }
+    });
+    
+    if (window.WindykatorWeb && window.WindykatorWeb.downloadCSV) {
+        window.WindykatorWeb.downloadCSV(data, 'windykator_sending_results.csv');
+    } else {
+        // Fallback
+        const csvContent = convertToCSV(data);
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement('a');
+        const url = URL.createObjectURL(blob);
+        link.setAttribute('href', url);
+        link.setAttribute('download', 'windykator_sending_results.csv');
+        link.click();
+    }
+}
+
+function viewDetailedResults() {
+    // Show detailed results in a modal or new page
+    showAlert('Funkcja szczegółowych wyników będzie dostępna wkrótce', 'info');
+}
+
+function filterTable() {
+    // Simple filter implementation
+    const searchTerm = prompt('Wprowadź tekst do wyszukania:');
+    if (!searchTerm) return;
+    
+    const table = document.getElementById('sendingTable');
+    const rows = table.querySelectorAll('tbody tr');
+    
+    rows.forEach(row => {
+        const text = row.textContent.toLowerCase();
+        const visible = text.includes(searchTerm.toLowerCase());
+        row.style.display = visible ? '' : 'none';
+    });
+}
+
+function convertToCSV(data) {
+    if (!data || data.length === 0) return '';
+    
+    const headers = Object.keys(data[0]);
+    const csvRows = [headers.join(';')];
+    
+    data.forEach(row => {
+        const values = headers.map(header => {
+            const value = row[header] || '';
+            return `"${value}"`;
+        });
+        csvRows.push(values.join(';'));
+    });
+    
+    return csvRows.join('\n');
+}
+
+function showAlert(message, type = 'info') {
+    if (window.WindykatorWeb && window.WindykatorWeb.showAlert) {
+        window.WindykatorWeb.showAlert(message, type);
+    } else {
+        // Fallback alert
+        alert(message);
+    }
+}
+</script>
+{% endblock %} 

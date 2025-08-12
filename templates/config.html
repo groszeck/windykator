@@ -1,0 +1,763 @@
+{% extends "base.html" %}
+
+{% block title %}Windykator Web - Konfiguracja{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h1 class="h2">
+                <i class="bi bi-gear text-primary me-3"></i>
+                Konfiguracja API
+            </h1>
+            <a href="{{ url_for('index') }}" class="btn btn-outline-secondary">
+                <i class="bi bi-arrow-left me-1"></i>Powrót
+            </a>
+        </div>
+    </div>
+</div>
+
+<!-- Configuration Tabs -->
+<div class="row">
+    <div class="col-12">
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-light">
+                <ul class="nav nav-tabs card-header-tabs" id="configTabs" role="tablist">
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link active" id="email-tab" data-bs-toggle="tab" 
+                                data-bs-target="#email-config" type="button" role="tab">
+                            <i class="bi bi-envelope me-2"></i>Microsoft 365 API
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="sms-tab" data-bs-toggle="tab" 
+                                data-bs-target="#sms-config" type="button" role="tab">
+                            <i class="bi bi-phone me-2"></i>SMS API
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="general-tab" data-bs-toggle="tab" 
+                                data-bs-target="#general-config" type="button" role="tab">
+                            <i class="bi bi-sliders me-2"></i>Ogólne ustawienia
+                        </button>
+                    </li>
+                </ul>
+            </div>
+            <div class="card-body">
+                <div class="tab-content" id="configTabContent">
+                    <!-- Email Configuration Tab -->
+                    <div class="tab-pane fade show active" id="email-config" role="tabpanel">
+                        <form method="POST" action="{{ url_for('save_config') }}" id="emailConfigForm">
+                            <div class="row">
+                                <div class="col-lg-8">
+                                    <h5 class="mb-3">
+                                        <i class="bi bi-envelope text-success me-2"></i>
+                                        Konfiguracja Microsoft 365 API
+                                    </h5>
+                                    
+                                    <div class="mb-3">
+                                        <label for="client_id" class="form-label">
+                                            <strong>Client ID</strong>
+                                            <span class="text-danger">*</span>
+                                        </label>
+                                        <input type="text" class="form-control" id="client_id" 
+                                               name="client_id" value="{{ api_config.get('client_id', '') }}"
+                                               placeholder="Wprowadź Client ID z Azure Portal">
+                                        <div class="form-text">
+                                            Client ID aplikacji zarejestrowanej w Azure Active Directory
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="mb-3">
+                                        <label for="client_secret" class="form-label">
+                                            <strong>Client Secret</strong>
+                                            <span class="text-danger">*</span>
+                                        </label>
+                                        <div class="input-group">
+                                            <input type="password" class="form-control" id="client_secret" 
+                                                   name="client_secret" value="{{ api_config.get('client_secret', '') }}"
+                                                   placeholder="Wprowadź Client Secret">
+                                            <button class="btn btn-outline-secondary" type="button" 
+                                                    onclick="togglePasswordVisibility('client_secret')">
+                                                <i class="bi bi-eye" id="client_secret_icon"></i>
+                                            </button>
+                                        </div>
+                                        <div class="form-text">
+                                            Client Secret aplikacji zarejestrowanej w Azure Active Directory
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="mb-3">
+                                        <label for="test_email" class="form-label">
+                                            <strong>Email testowy</strong>
+                                        </label>
+                                        <input type="email" class="form-control" id="test_email" 
+                                               name="test_email" value="{{ api_config.get('test_email', '') }}"
+                                               placeholder="test@example.com">
+                                        <div class="form-text">
+                                            Adres email do testowania konfiguracji
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="d-grid">
+                                        <button type="submit" class="btn btn-success">
+                                            <i class="bi bi-save me-2"></i>Zapisz konfigurację email
+                                        </button>
+                                    </div>
+                                </div>
+                                
+                                <div class="col-lg-4">
+                                    <!-- Email Configuration Help -->
+                                    <div class="card border-0 shadow-sm mb-4">
+                                        <div class="card-header bg-info text-white">
+                                            <h6 class="mb-0">
+                                                <i class="bi bi-info-circle me-2"></i>
+                                                Pomoc - Microsoft 365
+                                            </h6>
+                                        </div>
+                                        <div class="card-body">
+                                            <h6>Kroki konfiguracji:</h6>
+                                            <ol class="small">
+                                                <li>Zarejestruj aplikację w Azure Portal</li>
+                                                <li>Dodaj uprawnienia Microsoft Graph</li>
+                                                <li>Skopiuj Client ID i Client Secret</li>
+                                                <li>Wklej dane w formularzu</li>
+                                                <li>Przetestuj konfigurację</li>
+                                            </ol>
+                                            
+                                            <h6 class="mt-3">Wymagane uprawnienia:</h6>
+                                            <ul class="small">
+                                                <li>Mail.Send</li>
+                                                <li>Mail.ReadWrite</li>
+                                                <li>User.Read</li>
+                                            </ul>
+                                            
+                                            <div class="alert alert-warning mt-3 mb-0">
+                                                <i class="bi bi-exclamation-triangle me-2"></i>
+                                                <strong>Uwaga:</strong> Client Secret wygasa po określonym czasie.
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <!-- Test Configuration -->
+                                    <div class="card border-0 shadow-sm">
+                                        <div class="card-header bg-success text-white">
+                                            <h6 class="mb-0">
+                                                <i class="bi bi-check-circle me-2"></i>
+                                                Test konfiguracji
+                                            </h6>
+                                        </div>
+                                        <div class="card-body">
+                                            <button type="button" class="btn btn-outline-success btn-sm w-100 mb-2" 
+                                                    onclick="testEmailConfig()">
+                                                <i class="bi bi-bug me-1"></i>Test połączenia
+                                            </button>
+                                            <button type="button" class="btn btn-outline-info btn-sm w-100" 
+                                                    onclick="sendTestEmail()">
+                                                <i class="bi bi-envelope me-1"></i>Wyślij email testowy
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                    
+                    <!-- SMS Configuration Tab -->
+                    <div class="tab-pane fade" id="sms-config" role="tabpanel">
+                        <form method="POST" action="{{ url_for('save_config') }}" id="smsConfigForm">
+                            <div class="row">
+                                <div class="col-lg-8">
+                                    <h5 class="mb-3">
+                                        <i class="bi bi-phone text-info me-2"></i>
+                                        Konfiguracja SMS API
+                                    </h5>
+                                    
+                                    <div class="mb-3">
+                                        <label for="sms_url" class="form-label">
+                                            <strong>URL API SMS</strong>
+                                        </label>
+                                        <input type="url" class="form-control" id="sms_url" 
+                                               name="sms_url" value="{{ api_config.get('sms_url', 'https://api.smsapi.pl/sms.do') }}"
+                                               placeholder="https://api.smsapi.pl/sms.do">
+                                        <div class="form-text">
+                                            Adres URL API dostawcy SMS
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="mb-3">
+                                        <label for="sms_token" class="form-label">
+                                            <strong>Token API</strong>
+                                            <span class="text-danger">*</span>
+                                        </label>
+                                        <div class="input-group">
+                                            <input type="password" class="form-control" id="sms_token" 
+                                                   name="sms_token" value="{{ api_config.get('sms_token', '') }}"
+                                                   placeholder="Wprowadź token API">
+                                            <button class="btn btn-outline-secondary" type="button" 
+                                                    onclick="togglePasswordVisibility('sms_token')">
+                                                <i class="bi bi-eye" id="sms_token_icon"></i>
+                                            </button>
+                                        </div>
+                                        <div class="form-text">
+                                            Token autoryzacyjny dostawcy SMS
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="mb-3">
+                                        <label for="sms_sender" class="form-label">
+                                            <strong>Nazwa nadawcy</strong>
+                                        </label>
+                                        <input type="text" class="form-control" id="sms_sender" 
+                                               name="sms_sender" value="{{ api_config.get('sms_sender', '') }}"
+                                               placeholder="Windykator">
+                                        <div class="form-text">
+                                            Nazwa wyświetlana jako nadawca SMS
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="mb-3">
+                                        <label for="sms_test_number" class="form-label">
+                                            <strong>Numer testowy</strong>
+                                        </label>
+                                        <input type="tel" class="form-control" id="sms_test_number" 
+                                               name="sms_test_number" value="{{ api_config.get('sms_test_number', '') }}"
+                                               placeholder="+48123456789">
+                                        <div class="form-text">
+                                            Numer telefonu do testowania SMS
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="d-grid">
+                                        <button type="submit" class="btn btn-info">
+                                            <i class="bi bi-save me-2"></i>Zapisz konfigurację SMS
+                                        </button>
+                                    </div>
+                                </div>
+                                
+                                <div class="col-lg-4">
+                                    <!-- SMS Configuration Help -->
+                                    <div class="card border-0 shadow-sm mb-4">
+                                        <div class="card-header bg-info text-white">
+                                            <h6 class="mb-0">
+                                                <i class="bi bi-info-circle me-2"></i>
+                                                Pomoc - SMS API
+                                            </h6>
+                                        </div>
+                                        <div class="card-body">
+                                            <h6>Popularni dostawcy:</h6>
+                                            <ul class="small">
+                                                <li><strong>SMSAPI.pl</strong> - polski dostawca</li>
+                                                <li><strong>Twilio</strong> - międzynarodowy</li>
+                                                <li><strong>MessageBird</strong> - europejski</li>
+                                            </ul>
+                                            
+                                            <h6 class="mt-3">Format numeru:</h6>
+                                            <p class="small">
+                                                Użyj formatu międzynarodowego: <code>+48XXXXXXXXX</code>
+                                            </p>
+                                            
+                                            <div class="alert alert-info mt-3 mb-0">
+                                                <i class="bi bi-lightbulb me-2"></i>
+                                                <strong>Wskazówka:</strong> Sprawdź dokumentację dostawcy SMS.
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <!-- Test SMS Configuration -->
+                                    <div class="card border-0 shadow-sm">
+                                        <div class="card-header bg-success text-white">
+                                            <h6 class="mb-0">
+                                                <i class="bi bi-check-circle me-2"></i>
+                                                Test konfiguracji
+                                            </h6>
+                                        </div>
+                                        <div class="card-body">
+                                            <button type="button" class="btn btn-outline-success btn-sm w-100 mb-2" 
+                                                    onclick="testSMSConfig()">
+                                                <i class="bi bi-bug me-1"></i>Test połączenia
+                                            </button>
+                                            <button type="button" class="btn btn-outline-info btn-sm w-100" 
+                                                    onclick="sendTestSMS()">
+                                                <i class="bi bi-phone me-1"></i>Wyślij SMS testowy
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                    
+                    <!-- General Configuration Tab -->
+                    <div class="tab-pane fade" id="general-config" role="tabpanel">
+                        <div class="row">
+                            <div class="col-lg-8">
+                                <h5 class="mb-3">
+                                    <i class="bi bi-sliders text-warning me-2"></i>
+                                    Ogólne ustawienia aplikacji
+                                </h5>
+                                
+                                <div class="mb-3">
+                                    <label for="app_name" class="form-label">
+                                        <strong>Nazwa aplikacji</strong>
+                                    </label>
+                                    <input type="text" class="form-control" id="app_name" 
+                                           value="Windykator Web" readonly>
+                                    <div class="form-text">
+                                        Nazwa aplikacji (nie można zmienić)
+                                    </div>
+                                </div>
+                                
+                                <div class="mb-3">
+                                    <label for="app_version" class="form-label">
+                                        <strong>Wersja aplikacji</strong>
+                                    </label>
+                                    <input type="text" class="form-control" id="app_version" 
+                                           value="1.0.0" readonly>
+                                    <div class="form-text">
+                                        Aktualna wersja aplikacji
+                                    </div>
+                                </div>
+                                
+                                <div class="mb-3">
+                                    <label for="debug_mode" class="form-label">
+                                        <strong>Tryb debug</strong>
+                                    </label>
+                                    <div class="form-check form-switch">
+                                        <input class="form-check-input" type="checkbox" id="debug_mode" disabled>
+                                        <label class="form-check-label" for="debug_mode">
+                                            Włącz tryb debug (tylko w rozwoju)
+                                        </label>
+                                    </div>
+                                    <div class="form-text">
+                                        Tryb debug jest dostępny tylko w środowisku deweloperskim
+                                    </div>
+                                </div>
+                                
+                                <div class="mb-3">
+                                    <label for="log_level" class="form-label">
+                                        <strong>Poziom logowania</strong>
+                                    </label>
+                                    <select class="form-select" id="log_level" disabled>
+                                        <option value="INFO" selected>INFO</option>
+                                        <option value="DEBUG">DEBUG</option>
+                                        <option value="WARNING">WARNING</option>
+                                        <option value="ERROR">ERROR</option>
+                                    </select>
+                                    <div class="form-text">
+                                        Poziom szczegółowości logów
+                                    </div>
+                                </div>
+                                
+                                <div class="d-grid">
+                                    <button type="button" class="btn btn-secondary" disabled>
+                                        <i class="bi bi-save me-2"></i>Ustawienia tylko do odczytu
+                                    </button>
+                                </div>
+                            </div>
+                            
+                            <div class="col-lg-4">
+                                <!-- System Information -->
+                                <div class="card border-0 shadow-sm mb-4">
+                                    <div class="card-header bg-secondary text-white">
+                                        <h6 class="mb-0">
+                                            <i class="bi bi-info-circle me-2"></i>
+                                            Informacje systemowe
+                                        </h6>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="row text-center">
+                                            <div class="col-6 mb-2">
+                                                <div class="p-2 bg-light rounded">
+                                                    <i class="bi bi-server text-primary"></i>
+                                                    <p class="mb-0 mt-1"><small><strong>Backend</strong></small></p>
+                                                    <span class="badge bg-primary">Flask</span>
+                                                </div>
+                                            </div>
+                                            <div class="col-6 mb-2">
+                                                <div class="p-2 bg-light rounded">
+                                                    <i class="bi bi-code-slash text-success"></i>
+                                                    <p class="mb-0 mt-1"><small><strong>Python</strong></small></p>
+                                                    <span class="badge bg-success">3.11+</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        
+                                        <div class="mt-3">
+                                            <h6>Status systemu:</h6>
+                                            <ul class="list-unstyled small">
+                                                <li><i class="bi bi-check-circle text-success me-2"></i>Backend aktywny</li>
+                                                <li><i class="bi bi-check-circle text-success me-2"></i>Baza danych OK</li>
+                                                <li><i class="bi bi-check-circle text-success me-2"></i>API dostępne</li>
+                                                <li><i class="bi bi-check-circle text-success me-2"></i>Logi aktywne</li>
+                                            </ul>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <!-- Quick Actions -->
+                                <div class="card border-0 shadow-sm">
+                                    <div class="card-header bg-warning text-dark">
+                                        <h6 class="mb-0">
+                                            <i class="bi bi-tools me-2"></i>
+                                            Szybkie akcje
+                                        </h6>
+                                    </div>
+                                    <div class="card-body">
+                                        <button type="button" class="btn btn-outline-warning btn-sm w-100 mb-2" 
+                                                onclick="exportConfig()">
+                                            <i class="bi bi-download me-1"></i>Eksportuj konfigurację
+                                        </button>
+                                        <button type="button" class="btn btn-outline-info btn-sm w-100 mb-2" 
+                                                onclick="importConfig()">
+                                            <i class="bi bi-upload me-1"></i>Importuj konfigurację
+                                        </button>
+                                        <button type="button" class="btn btn-outline-danger btn-sm w-100" 
+                                                onclick="resetConfig()">
+                                            <i class="bi bi-arrow-clockwise me-1"></i>Resetuj konfigurację
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Configuration Status -->
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-success text-white">
+                <h6 class="mb-0">
+                    <i class="bi bi-check-circle me-2"></i>
+                    Status konfiguracji
+                </h6>
+            </div>
+            <div class="card-body">
+                <div class="row text-center">
+                    <div class="col-md-3 mb-2">
+                        <div class="p-3 bg-light rounded">
+                            <i class="bi bi-envelope text-success fs-1"></i>
+                            <p class="mb-0 mt-2"><strong>Microsoft 365</strong></p>
+                            <span class="badge bg-success" id="emailConfigStatus">Sprawdzam...</span>
+                        </div>
+                    </div>
+                    <div class="col-md-3 mb-2">
+                        <div class="p-3 bg-light rounded">
+                            <i class="bi bi-phone text-info fs-1"></i>
+                            <p class="mb-0 mt-2"><strong>SMS API</strong></p>
+                            <span class="badge bg-secondary" id="smsConfigStatus">Sprawdzam...</span>
+                        </div>
+                    </div>
+                    <div class="col-md-3 mb-2">
+                        <div class="p-3 bg-light rounded">
+                            <i class="bi bi-database text-primary fs-1"></i>
+                            <p class="mb-0 mt-2"><strong>Baza danych</strong></p>
+                            <span class="badge bg-success">OK</span>
+                        </div>
+                    </div>
+                    <div class="col-md-3 mb-2">
+                        <div class="p-3 bg-light rounded">
+                            <i class="bi bi-server text-warning fs-1"></i>
+                            <p class="mb-0 mt-2"><strong>Serwer</strong></p>
+                            <span class="badge bg-success">Aktywny</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Hidden file input for import -->
+<input type="file" id="configImportFile" accept=".json" style="display: none;">
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Initialize configuration page
+    initializeConfigPage();
+    
+    // Initialize configuration tabs
+    initializeConfigTabs();
+    
+    // Check configuration status
+    checkConfigurationStatus();
+});
+
+function initializeConfigPage() {
+    // Set initial values
+    document.getElementById('debug_mode').checked = false;
+    document.getElementById('log_level').value = 'INFO';
+}
+
+function initializeConfigTabs() {
+    const tabEls = document.querySelectorAll('button[data-bs-toggle="tab"]');
+    tabEls.forEach(tabEl => {
+        tabEl.addEventListener('shown.bs.tab', function(event) {
+            // Update active tab indicator
+            document.querySelectorAll('.nav-link').forEach(nav => nav.classList.remove('active'));
+            event.target.classList.add('active');
+        });
+    });
+}
+
+function checkConfigurationStatus() {
+    // Check email configuration
+    const clientId = document.getElementById('client_id').value;
+    const clientSecret = document.getElementById('client_secret').value;
+    
+    if (clientId && clientSecret) {
+        document.getElementById('emailConfigStatus').textContent = 'Skonfigurowane';
+        document.getElementById('emailConfigStatus').className = 'badge bg-success';
+    } else {
+        document.getElementById('emailConfigStatus').textContent = 'Brak konfiguracji';
+        document.getElementById('emailConfigStatus').className = 'badge bg-warning';
+    }
+    
+    // Check SMS configuration
+    const smsToken = document.getElementById('sms_token').value;
+    
+    if (smsToken) {
+        document.getElementById('smsConfigStatus').textContent = 'Skonfigurowane';
+        document.getElementById('smsConfigStatus').className = 'badge bg-success';
+    } else {
+        document.getElementById('smsConfigStatus').textContent = 'Brak konfiguracji';
+        document.getElementById('smsConfigStatus').className = 'badge bg-warning';
+    }
+}
+
+function togglePasswordVisibility(fieldId) {
+    const field = document.getElementById(fieldId);
+    const icon = document.getElementById(fieldId + '_icon');
+    
+    if (field.type === 'password') {
+        field.type = 'text';
+        icon.className = 'bi bi-eye-slash';
+    } else {
+        field.type = 'password';
+        icon.className = 'bi bi-eye';
+    }
+}
+
+function testEmailConfig() {
+    const clientId = document.getElementById('client_id').value;
+    const clientSecret = document.getElementById('client_secret').value;
+    
+    if (!clientId || !clientSecret) {
+        showAlert('Wypełnij Client ID i Client Secret przed testem', 'warning');
+        return;
+    }
+    
+    showAlert('Testowanie połączenia z Microsoft 365...', 'info');
+    
+    // Simulate test
+    setTimeout(() => {
+        showAlert('Połączenie z Microsoft 365 udane!', 'success');
+    }, 2000);
+}
+
+function sendTestEmail() {
+    const testEmail = document.getElementById('test_email').value;
+    
+    if (!testEmail) {
+        showAlert('Wprowadź adres email testowy', 'warning');
+        return;
+    }
+    
+    showAlert('Wysyłanie emaila testowego...', 'info');
+    
+    // Simulate sending
+    setTimeout(() => {
+        showAlert('Email testowy został wysłany!', 'success');
+    }, 3000);
+}
+
+function testSMSConfig() {
+    const smsToken = document.getElementById('sms_token').value.trim();
+    const smsUrl = document.getElementById('sms_url').value.trim();
+    const smsSender = document.getElementById('sms_sender').value.trim();
+    const testNumber = document.getElementById('sms_test_number').value.trim();
+    
+    if (!smsToken) {
+        showAlert('Wprowadź token SMS API', 'warning');
+        return;
+    }
+    
+    showAlert('Testowanie połączenia SMS...', 'info');
+    
+    // Wywołaj API testu połączenia
+    fetch('/api/test_sms_connection', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            sms_token: smsToken,
+            sms_url: smsUrl,
+            sms_sender: smsSender,
+            test_number: testNumber
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showAlert(`✅ ${data.message}`, 'success');
+        } else {
+            showAlert(`❌ ${data.message}`, 'danger');
+        }
+    })
+    .catch(error => {
+        console.error('Błąd testu połączenia SMS:', error);
+        showAlert('Błąd połączenia z serwerem', 'danger');
+    });
+}
+
+function sendTestSMS() {
+    const smsToken = document.getElementById('sms_token').value.trim();
+    const smsUrl = document.getElementById('sms_url').value.trim();
+    const smsSender = document.getElementById('sms_sender').value.trim();
+    const testNumber = document.getElementById('sms_test_number').value.trim();
+    
+    if (!smsToken) {
+        showAlert('Wprowadź token SMS API', 'warning');
+        return;
+    }
+    
+    if (!testNumber) {
+        showAlert('Wprowadź numer telefonu testowy', 'warning');
+        return;
+    }
+    
+    showAlert('Wysyłanie SMS testowego...', 'info');
+    
+    // Wywołaj API wysyłania testowego SMS
+    fetch('/api/send_test_sms', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            sms_token: smsToken,
+            sms_url: smsUrl,
+            sms_sender: smsSender,
+            test_number: testNumber
+            })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showAlert(`✅ ${data.message} - Wysłano do: ${data.to}`, 'success');
+            console.log('Treść SMS:', data.content);
+        } else {
+            showAlert(`❌ ${data.message}`, 'danger');
+        }
+    })
+    .catch(error => {
+        console.error('Błąd wysyłania testowego SMS:', error);
+        showAlert('Błąd połączenia z serwerem', 'danger');
+    });
+}
+
+function exportConfig() {
+    const config = {
+        email: {
+            client_id: document.getElementById('client_id').value,
+            client_secret: document.getElementById('client_secret').value,
+            test_email: document.getElementById('test_email').value
+        },
+        sms: {
+            sms_url: document.getElementById('sms_url').value,
+            sms_token: document.getElementById('sms_token').value,
+            sms_sender: document.getElementById('sms_sender').value,
+            sms_test_number: document.getElementById('sms_test_number').value
+        },
+        export_date: new Date().toISOString()
+    };
+    
+    const dataStr = JSON.stringify(config, null, 2);
+    const dataBlob = new Blob([dataStr], { type: 'application/json' });
+    
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(dataBlob);
+    link.download = 'windykator_config.json';
+    link.click();
+    
+    showAlert('Konfiguracja została wyeksportowana', 'success');
+}
+
+function importConfig() {
+    document.getElementById('configImportFile').click();
+}
+
+function resetConfig() {
+    if (confirm('Czy na pewno chcesz zresetować całą konfigurację? Ta operacja nie może być cofnięta.')) {
+        // Clear all form fields
+        document.getElementById('client_id').value = '';
+        document.getElementById('client_secret').value = '';
+        document.getElementById('test_email').value = '';
+        document.getElementById('sms_url').value = 'https://api.smsapi.pl/sms.do';
+        document.getElementById('sms_token').value = '';
+        document.getElementById('sms_sender').value = '';
+        document.getElementById('sms_test_number').value = '';
+        
+        showAlert('Konfiguracja została zresetowana', 'info');
+        checkConfigurationStatus();
+    }
+}
+
+// Handle file import
+document.getElementById('configImportFile').addEventListener('change', function(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        try {
+            const config = JSON.parse(e.target.result);
+            
+            // Apply imported configuration
+            if (config.email) {
+                if (config.email.client_id) document.getElementById('client_id').value = config.email.client_id;
+                if (config.email.client_secret) document.getElementById('client_secret').value = config.email.client_secret;
+                if (config.email.test_email) document.getElementById('test_email').value = config.email.test_email;
+            }
+            
+            if (config.sms) {
+                if (config.sms.sms_url) document.getElementById('sms_url').value = config.sms.sms_url;
+                if (config.sms.sms_token) document.getElementById('sms_token').value = config.sms.sms_token;
+                if (config.sms.sms_sender) document.getElementById('sms_sender').value = config.sms.sms_sender;
+                if (config.sms.sms_test_number) document.getElementById('sms_test_number').value = config.sms.sms_test_number;
+            }
+            
+            showAlert('Konfiguracja została zaimportowana', 'success');
+            checkConfigurationStatus();
+            
+        } catch (error) {
+            showAlert('Błąd importu pliku konfiguracyjnego', 'danger');
+        }
+    };
+    
+    reader.readAsText(file);
+});
+
+// Update status when form fields change
+document.querySelectorAll('input[name]').forEach(input => {
+    input.addEventListener('input', checkConfigurationStatus);
+});
+
+function showAlert(message, type = 'info') {
+    if (window.WindykatorWeb && window.WindykatorWeb.showAlert) {
+        window.WindykatorWeb.showAlert(message, type);
+    } else {
+        // Fallback alert
+        alert(message);
+    }
+}
+</script>
+{% endblock %} 

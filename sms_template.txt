@@ -1,3 +1,1 @@
-Uplynal termin platnosci za uslugi biura rachunkowego z faktury {nr_faktury} z dnia {data_faktury} na kwote {kwota} zl. Faktura jest przeterminowana o {dni_po_terminie} dni. Wplaty nalezy pilnie dokonac do13.08.2025 na rachunek 79144012990000000015095245
-
-
+Uplynal termin platnosci za uslugi biura rachunkowego z faktury {nr_faktury} z dnia {data_faktury} na kwote {kwota} zl. Wplaty nalezy pilnie dokonac do 13.08.2025 na rachunek 79144012990000000015095245

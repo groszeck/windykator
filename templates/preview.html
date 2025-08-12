@@ -1,0 +1,501 @@
+{% extends "base.html" %}
+
+{% block title %}Windykator Web - Podgląd danych{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h1 class="h2">
+                <i class="bi bi-eye text-primary me-3"></i>
+                Podgląd danych
+            </h1>
+            <div class="d-flex gap-2">
+                <a href="{{ url_for('column_mapping') }}" class="btn btn-outline-secondary">
+                    <i class="bi bi-arrow-left me-1"></i>Mapowanie
+                </a>
+                <a href="{{ url_for('sending') }}" class="btn btn-outline-primary">
+                    <i class="bi bi-send me-1"></i>Wysyłka
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Data Summary -->
+<div class="row mb-4">
+    <div class="col-md-3 mb-3">
+        <div class="card border-0 shadow-sm text-center">
+            <div class="card-body">
+                <div class="display-6 text-primary mb-2">
+                    <i class="bi bi-table"></i>
+                </div>
+                <h5 class="card-title">Wszystkie pozycje</h5>
+                <p class="display-6 text-primary mb-0">{{ data_count }}</p>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-3 mb-3">
+        <div class="card border-0 shadow-sm text-center">
+            <div class="card-body">
+                <div class="display-6 text-success mb-2">
+                    <i class="bi bi-envelope"></i>
+                </div>
+                <h5 class="card-title">Z emailem</h5>
+                <p class="display-6 text-success mb-0" id="emailCount">-</p>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-3 mb-3">
+        <div class="card border-0 shadow-sm text-center">
+            <div class="card-body">
+                <div class="display-6 text-info mb-2">
+                    <i class="bi bi-phone"></i>
+                </div>
+                <h5 class="card-title">Z telefonem</h5>
+                <p class="display-6 text-info mb-0" id="phoneCount">-</p>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-3 mb-3">
+        <div class="card border-0 shadow-sm text-center">
+            <div class="card-body">
+                <div class="display-6 text-warning mb-2">
+                    <i class="bi bi-calendar-exclamation"></i>
+                </div>
+                <h5 class="card-title">Po terminie</h5>
+                <p class="display-6 text-warning mb-0" id="overdueCount">-</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Search and Filter -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card border-0 shadow-sm">
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label for="searchInput" class="form-label">
+                            <i class="bi bi-search me-1"></i>Szukaj
+                        </label>
+                        <input type="text" class="form-control" id="searchInput" 
+                               placeholder="Szukaj w danych...">
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <label for="filterColumn" class="form-label">
+                            <i class="bi bi-funnel me-1"></i>Filtruj kolumnę
+                        </label>
+                        <select class="form-select" id="filterColumn">
+                            <option value="">Wszystkie kolumny</option>
+                            <option value="0">Kontrahent</option>
+                            <option value="1">NIP</option>
+                            <option value="2">Nr faktury</option>
+                            <option value="3">Email</option>
+                            <option value="4">Telefon</option>
+                            <option value="5">Kwota</option>
+                            <option value="6">Dni po terminie</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <label class="form-label">
+                            <i class="bi bi-arrow-down-up me-1"></i>Akcje
+                        </label>
+                        <div class="d-grid gap-2">
+                            <button type="button" class="btn btn-outline-secondary btn-sm" onclick="clearFilters()">
+                                <i class="bi bi-x-circle me-1"></i>Wyczyść filtry
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Data Table -->
+<div class="row">
+    <div class="col-12">
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-light d-flex justify-content-between align-items-center">
+                <h6 class="mb-0">
+                    <i class="bi bi-table me-2"></i>
+                    Dane z pliku ({{ data_count }} pozycji)
+                </h6>
+                <div class="d-flex gap-2">
+                    <button type="button" class="btn btn-outline-primary btn-sm" onclick="exportToCSV()">
+                        <i class="bi bi-download me-1"></i>Eksport CSV
+                    </button>
+                    <a href="{{ url_for('export_csv') }}" class="btn btn-primary btn-sm">
+                        <i class="bi bi-file-earmark-arrow-down me-1"></i>Pobierz CSV
+                    </a>
+                </div>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0" id="dataTable">
+                        <thead>
+                            <tr>
+                                <th style="cursor: pointer;" onclick="sortTable(0)">
+                                    <i class="bi bi-sort-down me-1"></i>Kontrahent
+                                </th>
+                                <th style="cursor: pointer;" onclick="sortTable(1)">
+                                    <i class="bi bi-sort-down me-1"></i>NIP
+                                </th>
+                                <th style="cursor: pointer;" onclick="sortTable(2)">
+                                    <i class="bi bi-sort-down me-1"></i>Nr faktury
+                                </th>
+                                <th style="cursor: pointer;" onclick="sortTable(3)">
+                                    <i class="bi bi-sort-down me-1"></i>Email
+                                </th>
+                                <th style="cursor: pointer;" onclick="sortTable(4)">
+                                    <i class="bi bi-sort-down me-1"></i>Telefon
+                                </th>
+                                <th style="cursor: pointer;" onclick="sortTable(5)">
+                                    <i class="bi bi-sort-down me-1"></i>Kwota
+                                </th>
+                                <th style="cursor: pointer;" onclick="sortTable(6)">
+                                    <i class="bi bi-sort-down me-1"></i>Dni po terminie
+                                </th>
+                                <th style="cursor: pointer;" onclick="sortTable(7)">
+                                    <i class="bi bi-sort-down me-1"></i>Data faktury
+                                </th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for item in preview_data %}
+                            <tr>
+                                <td>
+                                    <div class="d-flex align-items-center">
+                                        <span class="status-indicator success me-2"></span>
+                                        {{ item.get('kontrahent', '') }}
+                                    </div>
+                                </td>
+                                <td>{{ item.get('nip', '') }}</td>
+                                <td>{{ item.get('nr_faktury', '') }}</td>
+                                <td>
+                                    {% if item.get('email') %}
+                                        <span class="badge bg-success">{{ item.get('email', '') }}</span>
+                                    {% else %}
+                                        <span class="badge bg-secondary">Brak</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if item.get('telefon') %}
+                                        <span class="badge bg-info">{{ item.get('telefon', '') }}</span>
+                                    {% else %}
+                                        <span class="badge bg-secondary">Brak</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <span class="fw-bold text-primary">
+                                        {{ item.get('kwota', '') }}
+                                    </span>
+                                </td>
+                                <td>
+                                    {% set days = item.get('dni_po_terminie', 0) %}
+                                    {% if days > 0 %}
+                                        <span class="badge bg-danger">{{ days }} dni</span>
+                                    {% elif days == 0 %}
+                                        <span class="badge bg-success">W terminie</span>
+                                    {% else %}
+                                        <span class="badge bg-secondary">Brak daty</span>
+                                    {% endif %}
+                                </td>
+                                <td>{{ item.get('data_faktury', '') }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Pagination Info -->
+{% if data_count > 50 %}
+<div class="row mt-3">
+    <div class="col-12">
+        <div class="text-center">
+            <small class="text-muted">
+                <i class="bi bi-info-circle me-1"></i>
+                Pokazano pierwsze 50 pozycji z {{ data_count }}. 
+                Użyj wyszukiwania i filtrów aby znaleźć konkretne pozycje.
+            </small>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- Data Quality Check -->
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-warning text-dark">
+                <h6 class="mb-0">
+                    <i class="bi bi-exclamation-triangle me-2"></i>
+                    Sprawdzenie jakości danych
+                </h6>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6>Potencjalne problemy:</h6>
+                        <ul class="list-unstyled" id="dataIssues">
+                            <li><i class="bi bi-check-circle text-success me-2"></i>Sprawdzanie...</li>
+                        </ul>
+                    </div>
+                    <div class="col-md-6">
+                        <h6>Rekomendacje:</h6>
+                        <ul class="list-unstyled" id="dataRecommendations">
+                            <li><i class="bi bi-lightbulb text-warning me-2"></i>Analizowanie...</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Initialize data analysis
+    analyzeData();
+    
+    // Initialize search and filter
+    initializeSearchAndFilter();
+    
+    // Initialize table sorting
+    initializeTableSorting();
+});
+
+function analyzeData() {
+    const table = document.getElementById('dataTable');
+    const rows = table.querySelectorAll('tbody tr');
+    
+    let emailCount = 0;
+    let phoneCount = 0;
+    let overdueCount = 0;
+    let issues = [];
+    let recommendations = [];
+    
+    rows.forEach(row => {
+        const cells = row.querySelectorAll('td');
+        
+        // Count emails
+        if (cells[3].textContent.includes('@')) {
+            emailCount++;
+        }
+        
+        // Count phones
+        if (cells[4].textContent !== 'Brak') {
+            phoneCount++;
+        }
+        
+        // Count overdue
+        if (cells[6].textContent.includes('dni') && cells[6].textContent !== 'W terminie') {
+            overdueCount++;
+        }
+        
+        // Check for issues
+        if (cells[0].textContent.trim() === '') {
+            issues.push('Brak nazwy kontrahenta');
+        }
+        
+        if (cells[1].textContent.trim() === '') {
+            issues.push('Brak NIP');
+        }
+        
+        if (cells[5].textContent.trim() === '') {
+            issues.push('Brak kwoty');
+        }
+    });
+    
+    // Update counters
+    document.getElementById('emailCount').textContent = emailCount;
+    document.getElementById('phoneCount').textContent = phoneCount;
+    document.getElementById('overdueCount').textContent = overdueCount;
+    
+    // Update issues
+    const issuesList = document.getElementById('dataIssues');
+    if (issues.length === 0) {
+        issuesList.innerHTML = '<li><i class="bi bi-check-circle text-success me-2"></i>Brak problemów z danymi</li>';
+    } else {
+        const uniqueIssues = [...new Set(issues)];
+        issuesList.innerHTML = uniqueIssues.map(issue => 
+            `<li><i class="bi bi-exclamation-triangle text-warning me-2"></i>${issue}</li>`
+        ).join('');
+    }
+    
+    // Update recommendations
+    const recommendationsList = document.getElementById('dataRecommendations');
+    if (emailCount === 0) {
+        recommendations.push('Dodaj adresy email dla wysyłki powiadomień');
+    }
+    
+    if (phoneCount === 0) {
+        recommendations.push('Dodaj numery telefonów dla wysyłki SMS');
+    }
+    
+    if (overdueCount === 0) {
+        recommendations.push('Sprawdź czy kolumna "dni po terminie" jest poprawnie obliczana');
+    }
+    
+    if (recommendations.length === 0) {
+        recommendations.push('Dane wyglądają dobrze! Możesz przejść do wysyłki.');
+    }
+    
+    recommendationsList.innerHTML = recommendations.map(rec => 
+        `<li><i class="bi bi-lightbulb text-warning me-2"></i>${rec}</li>`
+    ).join('');
+}
+
+function initializeSearchAndFilter() {
+    const searchInput = document.getElementById('searchInput');
+    const filterColumn = document.getElementById('filterColumn');
+    
+    searchInput.addEventListener('input', filterTable);
+    filterColumn.addEventListener('change', filterTable);
+}
+
+function filterTable() {
+    const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+    const filterColumn = document.getElementById('filterColumn').value;
+    const table = document.getElementById('dataTable');
+    const rows = table.querySelectorAll('tbody tr');
+    
+    rows.forEach(row => {
+        let visible = true;
+        
+        if (searchTerm) {
+            if (filterColumn === '') {
+                // Search in all columns
+                const text = row.textContent.toLowerCase();
+                visible = text.includes(searchTerm);
+            } else {
+                // Search in specific column
+                const cell = row.cells[parseInt(filterColumn)];
+                const text = cell.textContent.toLowerCase();
+                visible = text.includes(searchTerm);
+            }
+        }
+        
+        row.style.display = visible ? '' : 'none';
+    });
+}
+
+function clearFilters() {
+    document.getElementById('searchInput').value = '';
+    document.getElementById('filterColumn').value = '';
+    
+    const table = document.getElementById('dataTable');
+    const rows = table.querySelectorAll('tbody tr');
+    rows.forEach(row => row.style.display = '');
+}
+
+function initializeTableSorting() {
+    // Table sorting is handled by the onclick handlers in the HTML
+}
+
+function sortTable(columnIndex) {
+    const table = document.getElementById('dataTable');
+    const tbody = table.querySelector('tbody');
+    const rows = Array.from(tbody.querySelectorAll('tr'));
+    
+    rows.sort((a, b) => {
+        const aValue = a.cells[columnIndex].textContent.trim();
+        const bValue = b.cells[columnIndex].textContent.trim();
+        
+        // Try to parse as number
+        const aNum = parseFloat(aValue.replace(/[^\d.-]/g, ''));
+        const bNum = parseFloat(bValue.replace(/[^\d.-]/g, ''));
+        
+        if (!isNaN(aNum) && !isNaN(bNum)) {
+            return aNum - bNum;
+        }
+        
+        // Sort as string
+        return aValue.localeCompare(bValue, 'pl');
+    });
+    
+    // Reorder rows
+    rows.forEach(row => tbody.appendChild(row));
+    
+    // Update sort indicators
+    updateSortIndicators(columnIndex);
+}
+
+function updateSortIndicators(activeColumn) {
+    const headers = document.querySelectorAll('th');
+    headers.forEach((header, index) => {
+        const icon = header.querySelector('i');
+        if (index === activeColumn) {
+            icon.className = 'bi bi-sort-up me-1';
+        } else {
+            icon.className = 'bi bi-sort-down me-1';
+        }
+    });
+}
+
+function exportToCSV() {
+    const table = document.getElementById('dataTable');
+    const rows = table.querySelectorAll('tbody tr');
+    const data = [];
+    
+    // Get headers
+    const headers = Array.from(table.querySelectorAll('th')).map(th => th.textContent.trim());
+    
+    // Get visible rows
+    rows.forEach(row => {
+        if (row.style.display !== 'none') {
+            const rowData = {};
+            const cells = row.querySelectorAll('td');
+            headers.forEach((header, index) => {
+                rowData[header] = cells[index].textContent.trim();
+            });
+            data.push(rowData);
+        }
+    });
+    
+    if (window.WindykatorWeb && window.WindykatorWeb.downloadCSV) {
+        window.WindykatorWeb.downloadCSV(data, 'windykator_preview.csv');
+    } else {
+        // Fallback
+        const csvContent = convertToCSV(data);
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement('a');
+        const url = URL.createObjectURL(blob);
+        link.setAttribute('href', url);
+        link.setAttribute('download', 'windykator_preview.csv');
+        link.style.visibility = 'hidden';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    }
+}
+
+function convertToCSV(data) {
+    if (!data || data.length === 0) return '';
+    
+    const headers = Object.keys(data[0]);
+    const csvRows = [headers.join(';')];
+    
+    data.forEach(row => {
+        const values = headers.map(header => {
+            const value = row[header] || '';
+            return `"${value}"`;
+        });
+        csvRows.push(values.join(';'));
+    });
+    
+    return csvRows.join('\n');
+}
+</script>
+{% endblock %} 

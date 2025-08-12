@@ -7,6 +7,7 @@ import threading
 import logging
 import glob
 import os
+import time
 
 # Import modułów
 from config import Config
@@ -370,15 +371,15 @@ class WindykatorApp:
             print(f"⚠️ Błąd wczytywania szablonów: {str(e)}")
     
     def load_excel_file(self):
-        """Wczytywanie pliku Excel/CSV"""
+        """Wczytywanie pliku Excel/CSV/TSV"""
         try:
             # Wybierz plik
             file_path = filedialog.askopenfilename(
-                title="Wybierz plik Excel/CSV",
+                title="Wybierz plik Excel/CSV/TSV",
                 filetypes=[
-                    ("Pliki Excel i CSV", "*.xlsx *.xls *.csv"),
+                    ("Pliki Excel, CSV i TSV", "*.xlsx *.xls *.csv *.tsv"),
                     ("Pliki Excel", "*.xlsx *.xls"),
-                    ("Pliki CSV", "*.csv"),
+                    ("Pliki CSV i TSV", "*.csv *.tsv"),
                     ("Wszystkie pliki", "*.*")
                 ]
             )
@@ -414,9 +415,22 @@ class WindykatorApp:
         """Aktualizuje comboboxy z kolumnami"""
         columns = self.data_processor.get_columns()
         
+        # Debug: wyświetl kolumny
+        print(f"🔍 Dostępne kolumny w pliku: {columns}")
+        print(f"🔍 Liczba kolumn: {len(columns)}")
+        
         for field, combo in self.data_mapping_widgets['mapping_fields'].items():
             combo['values'] = [''] + columns
             combo.set('')  # Wyczyść wybór
+        
+        # Aktualizuj informację o pliku z kolumnami
+        if self.data_processor.excel_data is not None:
+            row_count = len(self.data_processor.excel_data)
+            col_count = len(columns)
+            self.data_mapping_widgets['file_info'].config(
+                text=f"✅ Wczytano: {row_count} wierszy, {col_count} kolumn", 
+                style='Success.TLabel'
+            )
     
     def generate_preview(self):
         """Generowanie podglądu danych"""
@@ -461,8 +475,11 @@ class WindykatorApp:
         
         # Dodaj wiersze do podglądu
         print("📊 Pobieram dane do podglądu...")
-        preview_data = self.data_processor.get_preview_data()
-        print(f"📊 Pobrano {len(preview_data)} wierszy do podglądu")
+        # Pobierz wszystkie wiersze lub maksymalnie 1000 (zamiast domyślnych 10)
+        max_preview_rows = min(1000, len(self.data_processor.excel_data))
+        # Użyj zmapowanego podglądu zamiast oryginalnych kolumn
+        preview_data = self.data_processor.get_preview_data_mapped(max_rows=max_preview_rows)
+        print(f"📊 Pobrano {len(preview_data)} wierszy do podglądu (maksymalnie {max_preview_rows})")
         
         print("📝 Dodaję wiersze do Treeview...")
         for i, row_data in enumerate(preview_data):
@@ -486,7 +503,8 @@ class WindykatorApp:
         print("ℹ️ Aktualizuję informację o liczbie pozycji...")
         self.update_preview_info()
         
-        messagebox.showinfo("Sukces", f"Wygenerowano podgląd: {len(preview_data)} pozycji")
+        total_rows = len(self.data_processor.excel_data)
+        messagebox.showinfo("Sukces", f"Wygenerowano podgląd: {len(preview_data)} pozycji z {total_rows} dostępnych")
     
     def add_preview_item(self):
         """Dodawanie pozycji do podglądu"""
@@ -787,8 +805,14 @@ class WindykatorApp:
     
     def update_preview_info(self):
         """Aktualizuje informację o liczbie pozycji w podglądzie"""
-        count = len(self.data_mapping_widgets['preview_tree'].get_children())
-        self.data_mapping_widgets['preview_info'].config(text=f"ℹ️ W podglądzie: {count} pozycji")
+        preview_count = len(self.data_mapping_widgets['preview_tree'].get_children())
+        if self.data_processor.excel_data is not None:
+            total_count = len(self.data_processor.excel_data)
+            self.data_mapping_widgets['preview_info'].config(
+                text=f"ℹ️ W podglądzie: {preview_count} pozycji z {total_count} dostępnych"
+            )
+        else:
+            self.data_mapping_widgets['preview_info'].config(text=f"ℹ️ W podglądzie: {preview_count} pozycji")
     
     def save_mapping(self):
         """Zapisuje mapowanie kolumn"""
@@ -1391,7 +1415,7 @@ class WindykatorApp:
             self.logger.error(f"Błąd wyświetlania podsumowania testu: {e}")
     
     def send_reminders_from_window(self, send_email, send_sms):
-        """Wysyła powiadomienia z okna wysyłki"""
+        """Wysyła powiadomienia z okna wysyłki z przerwami między wysyłkami"""
         try:
             # Pobierz szablony
             email_template = self.templates_widgets['email_editor'].get(1.0, tk.END)
@@ -1399,11 +1423,45 @@ class WindykatorApp:
             
             # Pobierz dane do wysłania
             items = self.sending_status_tree.get_children()
+            total_items = len(items)
             
+            self.logger.info(f"🚀 Rozpoczynam wysyłkę {total_items} pozycji")
+            self.logger.info(f"📧 Email: {'✅' if send_email else '❌'}, 📱 SMS: {'✅' if send_sms else '❌'}")
+            
+            # Ustaw status "Wysyłanie..." dla wszystkich pozycji
             for item in items:
                 item_data = self.sending_status_tree.item(item)
                 values = item_data['values']
+                
+                # Ustaw status "Wysyłanie..." dla email
+                if send_email and values[3]:  # Email
+                    self.root.after(0, lambda item=item: self.update_sending_status(item, "⏳ Wysyłanie...", values[8]))
+                
+                # Ustaw status "Wysyłanie..." dla SMS
+                if send_sms and values[4]:  # Telefon
+                    self.root.after(0, lambda item=item: self.update_sending_status(item, values[7], "⏳ Wysyłanie..."))
+            
+            # Rozpocznij wysyłkę w osobnym wątku z przerwami
+            threading.Thread(target=self._send_reminders_with_delays, 
+                           args=(items, send_email, send_sms, email_template, sms_template), 
+                           daemon=True).start()
+            
+        except Exception as e:
+            self.logger.error(f"Błąd podczas przygotowania wysyłki: {e}")
+            self.root.after(0, lambda: messagebox.showerror("Błąd", f"Błąd przygotowania wysyłki: {str(e)}"))
+    
+    def _send_reminders_with_delays(self, items, send_email, send_sms, email_template, sms_template):
+        """Wysyła powiadomienia z przerwami między wysyłkami"""
+        try:
+            total_items = len(items)
+            self.logger.info(f"📤 Rozpoczynam wysyłkę z przerwami dla {total_items} pozycji")
+            
+            for i, item in enumerate(items):
+                item_data = self.sending_status_tree.item(item)
+                values = item_data['values']
                 index = item_data['tags'][0]
+                
+                self.logger.info(f"📤 Przetwarzam pozycję {i+1}/{total_items}: {values[0]}")
                 
                 # Przygotuj dane do szablonów
                 template_data = {
@@ -1414,10 +1472,10 @@ class WindykatorApp:
                     'telefon': values[4],
                     'kwota': values[5],
                     'dni_po_terminie': values[6],
-                    'data_faktury': ''  # Dodaj puste pole data_faktury
+                    'data_faktury': ''
                 }
                 
-                # Jeśli to pozycja z Excel (nie ręcznie dodana), pobierz data_faktury
+                # Jeśli to pozycja z Excel, pobierz data_faktury
                 if index >= 0 and self.data_processor.excel_data is not None:
                     try:
                         row = self.data_processor.excel_data.iloc[index]
@@ -1431,31 +1489,45 @@ class WindykatorApp:
                 # Wyślij email
                 if send_email and values[3]:  # Email
                     try:
+                        self.logger.info(f"📧 Wysyłam email do: {values[3]}")
                         success, message = self.email_sender.send_reminder_email(
                             values[3], template_data, email_template
                         )
                         status = "✅ Wysłano" if success else f"❌ {message[:30]}"
-                        self.root.after(0, lambda: self.update_sending_status(item, status, values[8]))
+                        self.logger.info(f"📧 Email {values[3]}: {status}")
+                        self.root.after(0, lambda item=item, status=status: self.update_sending_status(item, status, values[8]))
                     except Exception as e:
                         error_msg = str(e)[:30]
-                        self.root.after(0, lambda: self.update_sending_status(item, f"❌ {error_msg}", values[8]))
+                        self.logger.error(f"❌ Błąd email {values[3]}: {error_msg}")
+                        self.root.after(0, lambda item=item, error=error_msg: self.update_sending_status(item, f"❌ {error}", values[8]))
                 
                 # Wyślij SMS
                 if send_sms and values[4]:  # Telefon
                     try:
+                        self.logger.info(f"📱 Wysyłam SMS do: {values[4]}")
                         success, message = self.sms_sender.send_reminder_sms(
                             values[4], template_data, sms_template
                         )
                         status = "✅ Wysłano" if success else f"❌ {message[:30]}"
-                        self.root.after(0, lambda: self.update_sending_status(item, values[7], status))
+                        self.logger.info(f"📱 SMS {values[4]}: {status}")
+                        self.root.after(0, lambda item=item, status=status: self.update_sending_status(item, values[7], status))
                     except Exception as e:
                         error_msg = str(e)[:30]
-                        self.root.after(0, lambda: self.update_sending_status(item, values[7], f"❌ {error_msg}"))
+                        self.logger.error(f"❌ Błąd SMS {values[4]}: {error_msg}")
+                        self.root.after(0, lambda item=item, error=error_msg: self.update_sending_status(item, values[7], f"❌ {error}"))
+                
+                # PRZERWA między wysyłkami (2 sekundy)
+                if i < total_items - 1:  # Nie czekaj po ostatniej pozycji
+                    self.logger.info(f"⏳ Czekam 2 sekundy przed następną wysyłką...")
+                    time.sleep(2)
+            
+            self.logger.info(f"✅ Wysyłka zakończona dla {total_items} pozycji")
             
             # Zakończ wysyłkę i zapytaj o pobranie CSV
             self.root.after(0, lambda: self.ask_for_csv_export())
             
         except Exception as e:
+            self.logger.error(f"❌ Błąd podczas wysyłki z przerwami: {e}")
             self.root.after(0, lambda: messagebox.showerror("Błąd", f"Błąd wysyłki: {str(e)}"))
     
     def ask_for_csv_export(self):
